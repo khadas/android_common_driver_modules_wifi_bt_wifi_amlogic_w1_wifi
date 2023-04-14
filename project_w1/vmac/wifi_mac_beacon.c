@@ -21,6 +21,7 @@ wifi_mac_beacon_init(struct wifi_station *sta, struct wifi_mac_beacon_offsets *b
     struct wifi_mac *wifimac = sta->sta_wmac;
     unsigned short capinfo;
     struct wifi_mac_rateset *rs = &sta->sta_rates;
+    unsigned char index = 0;
 
     KASSERT(wnet_vif->vm_curchan != WIFINET_CHAN_ERR, ("no bss chan"));
     printk("%s(%d)\n", __func__, __LINE__);
@@ -147,6 +148,13 @@ wifi_mac_beacon_init(struct wifi_station *sta, struct wifi_mac_beacon_offsets *b
         //frm = wifi_mac_add_vht_op_md_ntf(frm, sta);
     }
 
+    for (index = 0; index < VENDOR_IE_MAX; index++) {
+        if (wifimac->wm_vendorinfo[index].ie == WIFINET_ELEMID_VENDOR
+            && wifimac->wm_vendorinfo[index].len != 0) {
+            bo->bo_vendor_ie[index] = frm;
+            frm = wifi_mac_add_vendor_ie(frm, wifimac, index);
+        }
+    }
     bo->bo_appie_buf = frm;
     bo->bo_appie_buf_len = 0;
     wnet_vif->vm_flags_ext |= WIFINET_FEXT_APPIE_UPDATE;
@@ -180,7 +188,7 @@ struct sk_buff *_wifi_mac_beacon_alloc(struct wifi_station *sta, struct wifi_mac
         + (wnet_vif->vm_caps & WIFINET_C_WPA ? (2 * sizeof(struct wifi_mac_ie_wpa)) : 0)
         + htcaplen + htinfolen + sizeof(struct wifi_mac_ie_obss_scan) + sizeof(struct wifi_mac_ie_ext_cap)
         + WIFINET_APPIE_MAX + sizeof(struct wifi_mac_ie_vht_cap) + sizeof(struct wifi_mac_ie_vht_opt)
-        + sizeof(struct wifi_mac_ie_vht_txpwr_env) + sizeof(struct wifi_mac_ie_vht_ch_sw_wrp);
+        + sizeof(struct wifi_mac_ie_vht_txpwr_env) + sizeof(struct wifi_mac_ie_vht_ch_sw_wrp) + sizeof(struct wifi_mac_vendor_ie) * VENDOR_IE_MAX;
 
     skb = wifi_mac_get_mgmt_frm(wifimac, pktlen);
     if (skb == NULL) {

@@ -59,6 +59,7 @@ unsigned char *wifi_mac_add_vht_quiet_ch(unsigned char *, struct wifi_station *)
 unsigned char *wifi_mac_add_vht_op_md_ntf(unsigned char *, struct wifi_station *);
 unsigned char *wifi_mac_add_obss_scan(unsigned char *, struct wifi_station *);
 unsigned char *wifi_mac_add_extcap(unsigned char *, struct wifi_station *);
+unsigned char *wifi_mac_add_vendor_ie(unsigned char *frm, struct wifi_mac *wifimac, unsigned char index);
 
 unsigned char *wifi_mac_add_timeout_interval(unsigned char *, struct wifi_station *);
 

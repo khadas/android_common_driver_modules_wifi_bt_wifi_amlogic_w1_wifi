@@ -2287,6 +2287,16 @@ unsigned char *wifi_mac_add_vht_op_md_ntf(unsigned char *frm, struct wifi_statio
     return frm + vht_op_md_ntf_len;
 }
 
+unsigned char *
+wifi_mac_add_vendor_ie(unsigned char *frm, struct wifi_mac *wifimac, unsigned char index)
+{
+    *frm++ = WIFINET_ELEMID_VENDOR;
+    *frm++ = wifimac->wm_vendorinfo[index].len;
+    memcpy(frm, &wifimac->wm_vendorinfo[index].buf, wifimac->wm_vendorinfo[index].len);
+
+    return frm + wifimac->wm_vendorinfo[index].len;
+}
+
 int wifi_mac_send_probereq(struct wifi_station *sta, const unsigned char sa[WIFINET_ADDR_LEN],
     const unsigned char da[WIFINET_ADDR_LEN], const unsigned char bssid[WIFINET_ADDR_LEN],
     const unsigned char *ssid, size_t ssidlen, const void *optie, size_t optielen)
@@ -2365,6 +2375,7 @@ int wifi_mac_send_probe_rsp(struct wlan_net_vif  *wnet_vif,
     unsigned char *frm;
     unsigned short capinfo;
     unsigned short pkt_len;
+    unsigned char  index;
 
     pkt_len = 8 + sizeof(unsigned short) + sizeof(unsigned short) + 2 + WIFINET_NWID_LEN + 2 + WIFINET_RATE_SIZE
         + 7 + 6 + 3 + 2 + (WIFINET_RATE_MAXSIZE - WIFINET_RATE_SIZE) + wifimac->wm_countryinfo.country_len + 2
@@ -2377,7 +2388,7 @@ int wifi_mac_send_probe_rsp(struct wlan_net_vif  *wnet_vif,
 #endif//#ifdef CONFIG_P2P
         + sizeof(struct wifi_mac_ie_htcap) + sizeof(struct wifi_mac_ie_htinfo) + sizeof (struct wifi_mac_ie_obss_scan)
         + sizeof (struct wifi_mac_ie_ext_cap) + WIFINET_APPIE_MAX + sizeof(struct wifi_mac_ie_vht_cap) + sizeof(struct wifi_mac_ie_vht_opt)
-        + sizeof(struct wifi_mac_ie_vht_txpwr_env) + sizeof(struct wifi_mac_ie_vht_ch_sw_wrp);
+        + sizeof(struct wifi_mac_ie_vht_txpwr_env) + sizeof(struct wifi_mac_ie_vht_ch_sw_wrp) + sizeof(struct wifi_mac_vendor_ie) * VENDOR_IE_MAX;
 
     skb = wifi_mac_get_mgmt_frm(wifimac, pkt_len);
     if (skb == NULL)
@@ -2553,6 +2564,13 @@ int wifi_mac_send_probe_rsp(struct wlan_net_vif  *wnet_vif,
         //frm = wifi_mac_add_vht_ext_bss_ld(frm, sta);
         //frm = wifi_mac_add_vht_quiet_ch(frm, sta);
         //frm = wifi_mac_add_vht_op_md_ntf(frm, sta);
+    }
+
+    for (index = 0; index < VENDOR_IE_MAX; index++) {
+        if (wifimac->wm_vendorinfo[index].ie == WIFINET_ELEMID_VENDOR
+            && wifimac->wm_vendorinfo[index].len != 0) {
+            frm = wifi_mac_add_vendor_ie(frm, wifimac, index);
+        }
     }
 
     os_skb_trim(skb, frm - os_skb_data(skb));
@@ -2812,7 +2830,7 @@ int wifi_mac_send_assoc_req(struct wlan_net_vif *wnet_vif, struct wifi_station *
 
     frm = wifi_mac_add_ssid(frm, sta->sta_essid, sta->sta_esslen);
     frm = wifi_mac_add_rates(frm, &sta->sta_rates);
-    if (wifimac->wm_flags & WIFINET_F_DOTH)
+    if ((wifimac->wm_flags & WIFINET_F_DOTH) && wnet_vif->vm_p2p_support)
         frm = wifi_mac_add_doth(frm, wnet_vif);
 
     frm = wifi_mac_add_xrates(frm, &sta->sta_rates);
@@ -2889,10 +2907,12 @@ int wifi_mac_send_assoc_rsp(struct wlan_net_vif *wnet_vif, struct wifi_station *
     unsigned char *frm;
     unsigned short capinfo;
     unsigned short pkt_len;
+    unsigned char  index;
 
     pkt_len = sizeof(capinfo) + sizeof(unsigned short) + sizeof(unsigned short) + 2 + WIFINET_RATE_SIZE + sizeof(struct wifi_mac_ie_timeout)
         + 2 + (WIFINET_RATE_MAXSIZE - WIFINET_RATE_SIZE) + sizeof(struct wifi_mac_wme_param) + sizeof(struct wifi_mac_ie_htcap)
-        + sizeof(struct wifi_mac_ie_htinfo) + sizeof (struct wifi_mac_ie_obss_scan) + sizeof (struct wifi_mac_ie_ext_cap) + WIFINET_APPIE_MAX;
+        + sizeof(struct wifi_mac_ie_htinfo) + sizeof (struct wifi_mac_ie_obss_scan) + sizeof (struct wifi_mac_ie_ext_cap) + WIFINET_APPIE_MAX
+        + sizeof(struct wifi_mac_vendor_ie) * VENDOR_IE_MAX;
 
     skb = wifi_mac_get_mgmt_frm(wifimac, pkt_len);
     if (skb == NULL) {
@@ -2991,6 +3011,13 @@ int wifi_mac_send_assoc_rsp(struct wlan_net_vif *wnet_vif, struct wifi_station *
         frm += wnet_vif->vm_p2p->wfd_app_ie[WIFINET_APPIE_FRAME_ASSOC_RESP].length;
     }
 #endif//#ifdef CONFIG_WFD
+
+    for (index = 0; index < VENDOR_IE_MAX; index++) {
+        if (wifimac->wm_vendorinfo[index].ie == WIFINET_ELEMID_VENDOR
+            && wifimac->wm_vendorinfo[index].len != 0) {
+            frm = wifi_mac_add_vendor_ie(frm, wifimac, index);
+        }
+    }
 
     os_skb_trim(skb, frm - os_skb_data(skb));
     wifi_mac_mgmt_output(sta, skb, type);

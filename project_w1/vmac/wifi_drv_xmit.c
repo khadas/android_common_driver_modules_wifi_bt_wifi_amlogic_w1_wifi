@@ -1277,7 +1277,8 @@ static void drv_tx_complete_mgmt_handle(struct drv_private *drv_priv,struct drv_
         printk("%s, txdesc_frame_flag=%d, status=%d\n", __func__, ptxdesc->txdesc_frame_flag, status);
 
         if ((sta->sta_wnet_vif->vm_p2p->action_code == WIFINET_ACT_PUBLIC_GAS_REQ && sta->sta_wnet_vif->vm_p2p->p2p_flag & P2P_GAS_RSP) ||
-            (sta->sta_wnet_vif->vm_p2p->action_code == WIFINET_ACT_PUBLIC_GAS_RSP && txok)) {
+            (sta->sta_wnet_vif->vm_p2p->action_code == WIFINET_ACT_PUBLIC_GAS_RSP && txok) ||
+            txok) {
 
             sta->sta_wnet_vif->vm_p2p->tx_status_flag = WIFINET_TX_STATUS_SUCC;
             sta->sta_wnet_vif->vm_p2p->send_tx_status_flag = 1;

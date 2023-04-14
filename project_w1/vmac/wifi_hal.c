@@ -1899,7 +1899,11 @@ void hal_get_sts(unsigned int op_code, unsigned int ctrl_code)
 int hal_close(void *drv_priv)
 {
     struct hal_private *hal_priv = hal_get_priv();
+    unsigned int to_sdio = 0;
     hal_priv->bhalOpen = 0;
+
+    to_sdio = 0x00000000;
+    hi_clear_irq_status(to_sdio);
     printk("%s(%d) hal_priv->bhalOpen 0x%x\n", __func__, __LINE__, hal_priv->bhalOpen);
     return 1;
 }

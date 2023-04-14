@@ -186,8 +186,7 @@ void aml_sdio_write_word(unsigned int addr, unsigned int data)
     ASSERT(sdio_kmm);
     memcpy(sdio_kmm, &data, sizeof(data));
     // for bt access always on reg
-    if((addr & 0x00f00000) == 0x00f00000)
-    {
+    if ((addr & 0x00f00000) == 0x00f00000) {
         aml_aon_write_reg(addr, data);
     }
     else if(((addr & 0x00f00000) == 0x00b00000)||
@@ -217,8 +216,7 @@ unsigned int aml_sdio_read_word(unsigned int addr)
     unsigned int regdata = 0;
 
 // for bt access always on reg
-    if((addr & 0x00f00000) == 0x00f00000)
-    {
+    if ((addr & 0x00f00000) == 0x00f00000) {
         regdata = aml_aon_read_reg(addr);
     }
     else if(((addr & 0x00f00000) == 0x00b00000)||
@@ -641,8 +639,7 @@ void aml_bt_hi_write_word(unsigned int addr,unsigned int data)
      */
     reg_tmp = hif->hif_ops.hi_read_word(RG_SDIO_IF_MISC_CTRL);
 
-    if((reg_tmp & BIT(23)) != 1)
-    {
+    if ((reg_tmp & BIT(23)) != 1) {
         reg_tmp |= BIT(23);
         hif->hif_ops.hi_write_word(RG_SDIO_IF_MISC_CTRL , reg_tmp);
     }
@@ -719,8 +716,7 @@ int aml_sdio_bottom_read(unsigned char  func_num, int addr, void *buf, size_t le
     {
         kmalloc_buf = buf;
     }
-    if(kmalloc_buf == NULL)
-    {
+    if (kmalloc_buf == NULL) {
         ERROR_DEBUG_OUT("kmalloc buf fail\n");
         return SDIOH_API_RC_FAIL;
     }
@@ -1114,6 +1110,7 @@ void aml_sdio_irq_path(unsigned char b_gpio)
     }
 }
 
+#if (USE_GPIO_IRQ==1)
 int amlhal_gpio_open(struct hal_private * hal_priv)
 {
     struct hw_interface* hif = hif_get_hw_interface();
@@ -1158,7 +1155,7 @@ int amlhal_gpio_open(struct hal_private * hal_priv)
         //hw_if->hif_ops.hi_write_word(RG_WIFI_IF_GPIO_IRQ_CNF, reg);
 
         //reg = hw_if->hif_ops.hi_read_word(RG_WIFI_IF_GPIO_IRQ_CNF);
-        
+
         printk("SDIO GPIO IRQ CONFIG REG=0x%x\n",reg);
 
         aml_sdio_irq_path(1); //  1: GPIO LINE PATH. 0: SDIO DATA LINE PATH
@@ -1183,20 +1180,32 @@ int amlhal_gpio_close(struct hal_private * hal_priv )
     return 0;
 }
 
+#endif //USE_GPIO_IRQ
+void aml_sdio_interrupt(struct sdio_func * func)
+{
+    struct hal_private *hal_priv = hal_get_priv();
+
+    if (hal_priv->bhalOpen)
+        hal_irq_top(0, hal_priv);
+}
+
+extern unsigned char wifi_irq_enable;
 void aml_sdio_enable_irq(int func_n)
 {
-    struct hal_private *hal_priv=NULL;
-    hal_priv = hal_get_priv();
+    struct hal_private *hal_priv = hal_get_priv();
+    if (!hal_priv->hst_if_irq_en) {
 #if (USE_SDIO_IRQ==1)
-    struct sdio_func *func = aml_priv_to_func(func_n);
-    sdio_claim_host(func);
-    sdio_claim_irq(func, aml_sdio_interrupt);
-    sdio_release_host(func);
-    aml_sdio_irq_path(0);
+        struct sdio_func *func = aml_priv_to_func(func_n);
+        sdio_claim_host(func);
+        sdio_claim_irq(func, aml_sdio_interrupt);
+        sdio_release_host(func);
+        aml_sdio_irq_path(0);
 #elif (USE_GPIO_IRQ==1)
-    amlhal_gpio_open(hal_priv);
+        amlhal_gpio_open(hal_priv);
 #endif
-    hal_priv->hst_if_irq_en = 1;
+        wifi_irq_enable = 1;
+        hal_priv->hst_if_irq_en = 1;
+    }
 }
 
 void aml_sdio_disable_irq(int func_n)
@@ -1214,6 +1223,7 @@ void aml_sdio_disable_irq(int func_n)
 #elif (USE_GPIO_IRQ==1)
         amlhal_gpio_close(hal_priv);
 #endif
+        wifi_irq_enable = 0;
         hal_priv->hst_if_irq_en = 0;
     }
 }
@@ -1567,7 +1577,7 @@ int aml_sdio_init(void)
     printk("%s(%d): sg ops init\n", __func__, __LINE__);
     hif->hif_ops.hi_enable_scat();
 
-    aml_sdio_enable_irq(SDIO_FUNC4);
+    aml_sdio_enable_irq(SDIO_FUNC1);
     printk("aml_sdio_probe-- ret %d\n", ret);
 
     if (aml_wifi_is_enable_rf_test()) {
@@ -1590,6 +1600,7 @@ void aml_disable_wifi(void)
     aml_sdio_disable_irq(SDIO_FUNC1);
     config_pmu_reg(AML_W1_WIFI_POWER_OFF);
     msleep(50);
+    aml_sdio_disable_irq(SDIO_FUNC1);
 }
 
 
@@ -1623,7 +1634,7 @@ void aml_sdio_exit(void) {
     hal_ops_detach();
     aml_customer_gpio_wlan_ctrl(WLAN_POWER_OFF);
 
-    amlhal_gpio_close(hal_priv);
+    aml_sdio_disable_irq(SDIO_FUNC1);
     hal_priv->hst_if_irq_en = 0;
     hal_priv->powersave_init_flag = 1;
     hal_free();
@@ -1792,7 +1803,7 @@ int aml_sdio_probe(struct sdio_func *func, const struct sdio_device_id *id)
     printk("%s(%d): sg ops init\n", __func__, __LINE__);
     hif->hif_ops.hi_enable_scat();
 
-    aml_sdio_enable_irq(SDIO_FUNC4);
+    aml_sdio_enable_irq(SDIO_FUNC1);
     printk("aml_sdio_probe-- ret %d\n", ret);
 
 
@@ -1826,7 +1837,7 @@ static void  aml_sdio_remove(struct sdio_func *func)
     printk("\n==========================================\n");
     printk("aml_sdio_remove++ func->num =%d \n",func->num);
     printk("==========================================\n");
-    aml_sdio_disable_irq(SDIO_FUNC2);
+    aml_sdio_disable_irq(SDIO_FUNC1);
     hal_priv->powersave_init_flag = 1;
     hal_free();
     if (func->num == FUNCNUM_SDIO_LAST)
@@ -1853,7 +1864,7 @@ static int aml_sdio_pm_resume(struct device *device)
 }
 
 static SIMPLE_DEV_PM_OPS(aml_sdio_pm_ops, aml_sdio_pm_suspend,
-			 aml_sdio_pm_resume);
+                        aml_sdio_pm_resume);
 
 static const struct sdio_device_id aml_devices[] =
 {
@@ -1992,7 +2003,7 @@ _restartsdio:
            switch(pDesc->func)
            {
                case SDIO_FUNC1:
-                	tbuffer = (unsigned char *)pDesc->buf;
+                    tbuffer = (unsigned char *)pDesc->buf;
                     ret = aml_sdio_read_reg(hif, SDIO_FUNC1,pDesc->addr&SDIO_ADDR_MASK,
                                     tbuffer,pDesc->len);
                     break;
@@ -2039,18 +2050,18 @@ _restartsdio:
         else if (pDesc->rw_flag == SDIO_RW_FLAG_WRITE)
         {
             switch(pDesc->func)
-	        {
-	            case SDIO_FUNC1:
-                	tbuffer = (unsigned char *)pDesc->buf;
+            {
+                case SDIO_FUNC1:
+                    tbuffer = (unsigned char *)pDesc->buf;
                     ret = aml_sdio_write_reg(hif,SDIO_FUNC1,pDesc->addr&SDIO_ADDR_MASK,
                                 tbuffer,pDesc->len);
                     break;
                 case SDIO_FUNC2:
                     tbuffer = (unsigned char *)j;
-                	pDesc->len = ALIGN(pDesc->len,4);
-                	for( i = 0;i < pDesc->len/4;i++){
-                        	hostSram_access(FW_ID,1,j,*(unsigned int*)(pDesc->buf+j),(int*)&data);
-                        	j+=4;
+                        pDesc->len = ALIGN(pDesc->len,4);
+                        for ( i = 0;i < pDesc->len/4;i++) {
+                                hostSram_access(FW_ID,1,j,*(unsigned int*)(pDesc->buf+j),(int*)&data);
+                                j+=4;
                 	}
                  	j=0;
                 	for( i = 0;i < pDesc->len/4;i++){

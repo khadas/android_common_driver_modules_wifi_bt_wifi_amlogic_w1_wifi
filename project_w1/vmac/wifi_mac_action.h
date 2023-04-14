@@ -126,6 +126,17 @@ struct wifi_mac_action_ba_delba
     unsigned short dl_reasoncode;
 } __packed;
 
+struct wifi_mac_pub_gas_act_frame
+{
+    unsigned char   category;
+    unsigned char   action;
+    unsigned char   dialog_token;
+    unsigned char   tag_num;
+    unsigned char   tag_len;
+    unsigned char   elts[1];
+} __packed;
+
+
 //AML_CATEGORY_PUBLIC action field
 enum WIFINET_PUBLIC_ACTION
 {
@@ -135,6 +146,10 @@ enum WIFINET_PUBLIC_ACTION
     WIFINET_ACT_PUBLIC_GAS_REQ = 10,
     WIFINET_ACT_PUBLIC_GAS_RSP = 11,
 };
+
+#define OUI_TYPE_P2P            0x09
+#define OUI_TYPE_DPP            0x1a
+
 
 struct wifi_mac_ie_bss_coex
 {

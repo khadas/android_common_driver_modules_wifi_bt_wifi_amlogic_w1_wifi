@@ -427,6 +427,7 @@ struct wifi_mac
     struct wifi_mac_ie_country wm_countryinfo;
     struct _wifi_mac_country_iso wm_country;
     struct wifi_mac_country_ie* wm_11dinfo;
+    struct wifi_mac_vendor_ie wm_vendorinfo[VENDOR_IE_MAX];
 
     unsigned char scan_gain_thresh_unconnect;
     unsigned char scan_gain_thresh_connect;
@@ -559,6 +560,10 @@ struct wlan_net_vif
     unsigned char wnet_vif_id;
     enum wifi_mac_opmode vm_opmode;
     enum wifi_mac_state vm_state;
+    unsigned char remain_on_channel;
+    struct ieee80211_channel remain_on_ch_channel;
+    unsigned long long remain_on_ch_cookie;
+    enum wifi_mac_pub_act_state pub_state;
 
     struct wifi_mac_ScanSSID vm_des_ssid[IV_SSID_SCAN_AMOUNT];
     unsigned char vm_des_bssid[WIFINET_ADDR_LEN];
@@ -568,6 +573,7 @@ struct wlan_net_vif
     enum wifi_mac_macmode vm_mac_mode;
     struct wifi_channel *vm_curchan;
     struct wifi_channel *vm_switchchan;
+    struct wifi_channel *vm_remainonchan;
     struct conn_chan_list vm_connchan;
     enum wifi_mac_bwc_width vm_bandwidth;
     unsigned char vm_scan_before_connect_flag;
@@ -592,6 +598,7 @@ struct wlan_net_vif
     struct os_timer_ext vm_mgtsend;
     struct os_timer_ext vm_sm_switch;
     struct os_timer_ext vm_actsend;
+    struct os_timer_ext vm_roc_timer;
     int vm_inact_init;
     int vm_inact_auth;
     int vm_inact_run;
@@ -758,6 +765,9 @@ struct wlan_net_vif
 #define WIFINET_FEXT2_PUREB 0x10000000
 #define WIFINET_FEXT2_PUREG 0x20000000
 #define WIFINET_FEXT2_PUREN 0x40000000
+#define WIFINET_FEXT2_SWITCH_CHANNEL 0x80000000
+#define WIFINET_FEXT2_ALLOW_SWITCH_CHANNEL 0x01000000
+
 
 #define WIFINET_FEXT2_PUREBGN (WIFINET_FEXT2_PUREB|WIFINET_FEXT2_PUREG|WIFINET_FEXT2_PUREN)
 #define WIFINET_FEXT2_PUREBG (WIFINET_FEXT2_PUREG|WIFINET_FEXT2_PUREB)

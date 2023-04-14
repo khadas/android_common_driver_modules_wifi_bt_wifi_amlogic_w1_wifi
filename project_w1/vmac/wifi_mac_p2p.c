@@ -2295,9 +2295,9 @@ int vm_p2p_parse_negotiation_frames(struct wifi_mac_p2p *p2p,
                     vm_change_p2pie_go_intent(p2p, p2p_pub_act->elts, len, tx, p2p_action_type);
 #endif
                 }
-                if (p2p->p2p_flag & P2P_CHANGE_CHANNEL_LIST) {
+                /*if (p2p->p2p_flag & P2P_CHANGE_CHANNEL_LIST) {
                     vm_change_p2pie_channel(p2p,p2p_pub_act->elts, len);
-                }
+                }*/
                 break;
 
             default:
@@ -2451,7 +2451,18 @@ vm_p2p_discover_listen(struct wifi_mac_p2p *p2p, int channel, unsigned int durat
 
 void vm_p2p_cancel_remain_channel(struct wifi_mac_p2p *p2p )
 {
+    struct wifi_mac_p2p_pub_act_frame *p2p_pub_act = NULL;
+    int cnt = 0;
+
     AML_PRINT(AML_DBG_MODULES_P2P, "++\n");
+    if (p2p_pub_act->action == WIFINET_ACT_PUBLIC_P2P) {
+        while (p2p->tx_status_flag != WIFINET_TX_STATUS_SUCC
+               && p2p->act_pkt_retry_count < DEFAULT_P2P_ACTION_RETRY_TIMES && cnt < 50) {
+            msleep(20);
+            cnt++;
+        }
+        AML_OUTPUT("cnt %d, flag %d, retry %d\n", cnt, p2p->tx_status_flag, p2p->act_pkt_retry_count);
+    }
     if (os_timer_ex_active(&(p2p->listen_timer)))
     {
         os_timer_ex_cancel(&(p2p->listen_timer), CANCEL_SLEEP);

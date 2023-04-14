@@ -184,6 +184,7 @@ int wifi_mac_input(void *station, struct sk_buff *skb, struct wifi_mac_rx_status
 #ifdef CONFIG_P2P
         &&(wnet_vif->vm_p2p->p2p_enable ==0)
 #endif//CONFIG_P2P
+        && (wnet_vif->remain_on_channel == 0)
        )
     {
         switch (wnet_vif->vm_opmode)
@@ -4483,9 +4484,11 @@ void wifi_mac_recv_action(struct wlan_net_vif *wnet_vif, struct wifi_station *st
     wh = (struct wifi_frame *)os_skb_data(skb);
     frm = (unsigned char *)os_skb_data(skb) + sizeof(struct wifi_frame);
     efrm = os_skb_data(skb) + os_skb_get_pktlen(skb);
+
     subtype = wh->i_fc[0] & WIFINET_FC0_SUBTYPE_MASK;
+
     {
-        if (wnet_vif->vm_state != WIFINET_S_CONNECTED &&
+        /*if (wnet_vif->vm_state != WIFINET_S_CONNECTED &&
             wnet_vif->vm_state != WIFINET_S_ASSOC &&
             wnet_vif->vm_state != WIFINET_S_AUTH)
         {
@@ -4494,9 +4497,10 @@ void wifi_mac_recv_action(struct wlan_net_vif *wnet_vif, struct wifi_station *st
 #endif
             {
                 wnet_vif->vif_sts.sts_mng_discard++;
+                printk("wifi_mac_recv_action: discard %d, %d\n", wnet_vif->vm_p2p_support, wnet_vif->vm_p2p->p2p_enable);
                 return;
             }
-        }
+        }*/
 
         WIFINET_VERIFY_LENGTH(efrm - frm, sizeof(struct wifi_mac_action));
         ia = (struct wifi_mac_action *)frm;
@@ -4513,6 +4517,7 @@ void wifi_mac_recv_action(struct wlan_net_vif *wnet_vif, struct wifi_station *st
         mdelay(50);
     }
 #endif
+    printk("recv_action_frame subtype %d, category %d\n", subtype, ia->ia_category);
 
         switch (ia->ia_category) {
             case AML_CATEGORY_QOS:

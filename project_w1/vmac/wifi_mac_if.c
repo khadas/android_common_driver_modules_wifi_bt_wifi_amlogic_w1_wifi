@@ -136,6 +136,7 @@ wifi_mac_vmac_delt(struct wlan_net_vif *wnet_vif)
     KASSERT(wnet_vif->vm_state == WIFINET_S_INIT, ("wnet_vif not stopped"));
 
     wifi_mac_beacon_free( wnet_vif->vm_wmac , wnet_vif->wnet_vif_id);
+    memset(&wifimac->wm_vendorinfo, 0, sizeof(struct wifi_mac_vendor_ie) * VENDOR_IE_MAX);
     ret = wifimac->drv_priv->drv_ops.remove_interface(wifimac->drv_priv, wnet_vif->wnet_vif_id);
     KASSERT(ret == 0, ("invalid interface id"));
 
@@ -1730,7 +1731,7 @@ int wifi_mac_cap_attach(struct wifi_mac *wifimac, struct drv_private* drv_priv)
 #endif
 
     wifimac->recovery_stat = WIFINET_RECOVERY_END;
-    os_timer_ex_initialize(&wifimac->wm_monitor_fw, 20000,wifi_mac_trigger_recovery, wifimac);
+    os_timer_ex_initialize(&wifimac->wm_monitor_fw, 2000,wifi_mac_trigger_recovery, wifimac);
 
     AML_OUTPUT("<running>\n");
     return 0;
@@ -2672,6 +2673,7 @@ static void wifi_mac_tx_timeout_ex (SYS_TYPE param1,
 
     wnet_vif->mgmt_pkt_retry_count = 0;
     if ((wnet_vif->vm_state == WIFINET_S_AUTH) || (wnet_vif->vm_state == WIFINET_S_ASSOC)) {
+        vm_cfg80211_indicate_disconnect(wnet_vif);
         wifi_mac_top_sm(wnet_vif, WIFINET_S_SCAN, 0);
     }
 }
@@ -2758,6 +2760,17 @@ static int wifi_mac_act_tx_timeout(void* arg)
         WIFINET_NODE_UNLOCK(nt);
     }
 
+    return OS_TIMER_NOT_REARMED;
+}
+
+static int wifi_mac_RocTimeout(void *arg)
+{
+    struct wlan_net_vif *wnet_vif = (struct wlan_net_vif *)arg;
+
+    printk("wifi_mac_RocTimeout\n");
+
+    cfg80211_remain_on_channel_expired(wnet_vif->vm_wdev, wnet_vif->remain_on_ch_cookie,
+        &wnet_vif->remain_on_ch_channel, GFP_KERNEL);
     return OS_TIMER_NOT_REARMED;
 }
 
@@ -2983,7 +2996,7 @@ wifi_mac_sub_sm(struct wlan_net_vif *wnet_vif, enum wifi_mac_state nstate, int a
                 case WIFINET_S_SCAN:
                 case WIFINET_S_CONNECTING:
                     if (sta->sta_authmode == WIFINET_AUTH_SAE) {
-#if (KERNEL_VERSION(4, 17, 0) <= LINUX_VERSION_CODE)
+#if (KERNEL_VERSION(4, 17, 0) <= LINUX_VERSION_CODE) || (defined WPA3_PATCH)
                             wifi_mac_trigger_sae(sta);
 #endif
 
@@ -2998,7 +3011,7 @@ wifi_mac_sub_sm(struct wlan_net_vif *wnet_vif, enum wifi_mac_state nstate, int a
                     if ((prestate == WIFINET_S_ASSOC)
                         && (sta->sta_authmode == WIFINET_AUTH_SAE)
                         && (arg == WIFINET_STATUS_INVALID_PMKID)) {
-#if (KERNEL_VERSION(4, 17, 0) <= LINUX_VERSION_CODE)
+#if (KERNEL_VERSION(4, 17, 0) <= LINUX_VERSION_CODE) || (defined WPA3_PATCH)
                         wifi_mac_trigger_sae(sta);
 #endif
 
@@ -3272,6 +3285,7 @@ void wifi_mac_com_vattach(struct wlan_net_vif *wnet_vif)
     os_timer_ex_initialize(&wnet_vif->vm_mgtsend, WIFINET_TRANS_WAIT, wifi_mac_mgmt_tx_timeout, wnet_vif);
     os_timer_ex_initialize(&wnet_vif->vm_sm_switch, WIFINET_TRANS_WAIT, wifi_mac_sm_switch_timeout, wnet_vif);
     os_timer_ex_initialize(&wnet_vif->vm_actsend, WIFINET_TRANS_WAIT, wifi_mac_act_tx_timeout, wnet_vif);
+    os_timer_ex_initialize(&wnet_vif->vm_roc_timer, 200, wifi_mac_RocTimeout, wnet_vif);
 
     /*set tx rate(11n mcs0 or 11b/g rate) for mgmt or
       multicast frames, set default max retry times*/
@@ -3283,6 +3297,7 @@ void wifi_mac_com_vdetach(struct wlan_net_vif *wnet_vif)
     os_timer_ex_del(&wnet_vif->vm_mgtsend, CANCEL_SLEEP);
     os_timer_ex_del(&wnet_vif->vm_sm_switch, CANCEL_SLEEP);
     os_timer_ex_del(&wnet_vif->vm_actsend, CANCEL_SLEEP);
+    os_timer_ex_del(&wnet_vif->vm_roc_timer, CANCEL_SLEEP);
 
     if (wnet_vif->vm_aclop != NULL)
         wnet_vif->vm_aclop->iac_detach(wnet_vif);
@@ -4210,7 +4225,8 @@ int wifi_mac_connect_repair(struct wifi_mac *wifimac)
             if (wnet_vif->vm_state == WIFINET_S_CONNECTED) {
                 wifimac->recovery_stat |= WIFINET_RECOVERY_UNDER_CONNECT;
             }
-
+            hi_get_irq_status();
+            printk("get irq status done\n");
             wifi_mac_top_sm(wnet_vif, WIFINET_S_SCAN, 0);
             wifi_mac_fw_recovery(wnet_vif);
             break;

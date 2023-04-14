@@ -300,6 +300,18 @@ enum wifi_mac_connect_state
     WIFINET_CON_MAX,
 };
 
+enum wifi_mac_pub_act_state
+{
+    WIFINET_PUB_INIT = 0,
+    WIFINET_DPP_AUTH_REQ,
+    WIFINET_DPP_AUTH_RSP,
+    WIFINET_DPP_AUTH_CNF,
+    WIFINET_PUB_GAS_REQ,
+    WIFINET_PUB_GAS_RSP,
+    WIFINET_PUB_MAX,
+};
+
+
 #define PHASE_CONNECTING 1
 #define PHASE_DISCONNECTING 2
 #define PHASE_TX_BUFF_QUEUE 4
@@ -330,6 +342,7 @@ struct wmeParams
 };
 
 #define WME_NUM_AC      4
+#define VENDOR_IE_MAX   3
 
 
 struct chanAccParams
@@ -378,6 +391,7 @@ struct wifi_mac_beacon_offsets
     unsigned char *bo_vhtcap;
     unsigned char *bo_obss_scan;
     unsigned char *bo_extcap;
+    unsigned char *bo_vendor_ie[VENDOR_IE_MAX];
     unsigned short bo_chanswitch_trailerlen;
     unsigned short bo_extchanswitch_trailerlen;
     unsigned char bo_initial;
@@ -1148,6 +1162,14 @@ struct wifi_mac_erp_ie
     unsigned char  erp_len;
     unsigned char  erp;
 } __packed;
+
+struct wifi_mac_vendor_ie
+{
+    unsigned char    ie;
+    unsigned char    len;
+    unsigned char    buf[256];
+} __packed;
+
 #define WIFINET_CHALLENGE_LEN       128
 
 #define WIFINET_SUPPCHAN_LEN        26

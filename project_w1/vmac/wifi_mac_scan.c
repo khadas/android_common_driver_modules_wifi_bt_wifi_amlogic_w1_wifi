@@ -662,7 +662,8 @@ void wifi_mac_scan_rx(struct wlan_net_vif *wnet_vif, const struct wifi_mac_scan_
     int hash;
     int index = 0;
     struct wifi_mac_Rsnparms rsn = {0};
-    int err;
+    int err, i;
+    unsigned char found_flag = 0;
 
     if (ss->scan_StateFlags & SCANSTATE_F_DISCARD) {
         DPRINTF(AML_DEBUG_SCAN,"%s %d drop \n",__func__,__LINE__);
@@ -793,8 +794,16 @@ void wifi_mac_scan_rx(struct wlan_net_vif *wnet_vif, const struct wifi_mac_scan_
     }
     WIFI_SCAN_SE_LIST_UNLOCK(st);
 
-    if ((ss->scan_CfgFlags & WIFINET_SCANCFG_CONNECT)
-        && (memcmp(se->scaninfo.SI_macaddr, wnet_vif->vm_des_bssid, ETH_ALEN) == 0)) {
+    for (i=0; i<ss->ss_nssid; i++) {
+        if (sp->ssid && sp->ssid[1] > 0 && sp->ssid[1] <= WIFINET_NWID_LEN) {
+            if ((ss->ss_ssid[i].len == sp->ssid[1]) && (memcmp(ss->ss_ssid[i].ssid, &sp->ssid[2], ss->ss_ssid[i].len) == 0)) {
+                found_flag = 1;
+                break;
+            }
+        }
+    }
+
+    if ((ss->scan_CfgFlags & WIFINET_SCANCFG_CONNECT) && found_flag) {
         ss->scan_StateFlags |= SCANSTATE_F_GET_CONNECT_AP;
     }
 
@@ -1739,6 +1748,7 @@ void wifi_mac_notify_ap_success(struct wlan_net_vif *wnet_vif) {
     struct wifi_mac *wifimac = wnet_vif->vm_wmac;
     struct drv_private *drv_priv = wifimac->drv_priv;
     struct wlan_net_vif *p2p_vmac = drv_priv->drv_wnet_vif_table[NET80211_P2P_VMAC];
+    struct wlan_net_vif *sta_vmac = drv_priv->drv_wnet_vif_table[NET80211_MAIN_VMAC];
 
     DPRINTF(AML_DEBUG_SCAN, "%s vid:%d\n", __func__, wnet_vif->wnet_vif_id);
 
@@ -1759,11 +1769,22 @@ void wifi_mac_notify_ap_success(struct wlan_net_vif *wnet_vif) {
         if (drv_priv->hal_priv->hal_ops.hal_tx_empty()) {
             wifi_mac_ChangeChannel(wifimac, p2p_vmac->vm_p2p->work_channel, 0, p2p_vmac->wnet_vif_id);
             p2p_vmac->vm_p2p->p2p_flag &= ~P2P_WAIT_SWITCH_CHANNEL;
-
         } else {
             //printk("still have pkt in hal, wait\n");
             p2p_vmac->vm_p2p->p2p_flag &= ~P2P_WAIT_SWITCH_CHANNEL;
             p2p_vmac->vm_p2p->p2p_flag |= P2P_ALLOW_SWITCH_CHANNEL;
+        }
+    }
+
+    if ((wifimac->wm_nrunning > 0)
+        && (sta_vmac->vm_flags_ext2 & WIFINET_FEXT2_SWITCH_CHANNEL)) {
+        if (drv_priv->hal_priv->hal_ops.hal_tx_empty()) {
+            wifi_mac_ChangeChannel(wifimac, sta_vmac->vm_remainonchan, 0, sta_vmac->wnet_vif_id);
+            sta_vmac->vm_flags_ext2 &= ~WIFINET_FEXT2_SWITCH_CHANNEL;
+        } else {
+            //printk("still have pkt in hal, wait\n");
+            sta_vmac->vm_flags_ext2 &= ~WIFINET_FEXT2_SWITCH_CHANNEL;
+            sta_vmac->vm_flags_ext2 |= WIFINET_FEXT2_ALLOW_SWITCH_CHANNEL;
         }
     }
 
@@ -1774,7 +1795,6 @@ void wifi_mac_notify_ap_success(struct wlan_net_vif *wnet_vif) {
                 wifimac->wm_vsdb_flags &= ~CONCURRENT_NOTIFY_AP;
                 if (drv_priv->hal_priv->hal_ops.hal_tx_empty()) {
                     concurrent_vsdb_do_channel_change(wifimac);
-
                 } else {
                     //printk("still have pkt in hal, wait\n");
                     wifimac->wm_vsdb_flags |= CONCURRENT_NOTIFY_AP_SUCCESS;
@@ -1787,6 +1807,7 @@ void wifi_mac_notify_ap_success(struct wlan_net_vif *wnet_vif) {
 void wifi_mac_notify_pkt_clear(struct wifi_mac *wifimac) {
     struct drv_private *drv_priv = wifimac->drv_priv;
     struct wlan_net_vif *p2p_vmac = drv_priv->drv_wnet_vif_table[NET80211_P2P_VMAC];
+    struct wlan_net_vif *sta_vmac = drv_priv->drv_wnet_vif_table[NET80211_MAIN_VMAC];
 
     DPRINTF(AML_DEBUG_SCAN, "%s\n", __func__);
 
@@ -1806,6 +1827,14 @@ void wifi_mac_notify_pkt_clear(struct wifi_mac *wifimac) {
         if (drv_priv->hal_priv->hal_ops.hal_tx_empty()) {
             wifi_mac_ChangeChannel(wifimac, p2p_vmac->vm_p2p->work_channel, 0, p2p_vmac->wnet_vif_id);
             p2p_vmac->vm_p2p->p2p_flag &= ~P2P_ALLOW_SWITCH_CHANNEL;
+        }
+    }
+
+    if ((wifimac->wm_nrunning > 0)
+        && (sta_vmac->vm_flags_ext2 & WIFINET_FEXT2_ALLOW_SWITCH_CHANNEL)) {
+        if (drv_priv->hal_priv->hal_ops.hal_tx_empty()) {
+            wifi_mac_ChangeChannel(wifimac, sta_vmac->vm_remainonchan, 0, sta_vmac->wnet_vif_id);
+            sta_vmac->vm_flags_ext2 &= ~WIFINET_FEXT2_ALLOW_SWITCH_CHANNEL;
         }
     }
 
@@ -1984,8 +2013,9 @@ int wifi_mac_start_scan(struct wlan_net_vif *wnet_vif, int flags,
 
     if (!wnet_vif->vm_scan_before_connect_flag && ((ss->VMacPriv != wnet_vif) || (ss->scan_CfgFlags & WIFINET_SCANCFG_FLUSH))) {
         wifi_mac_scan_flush(wifimac);
-        ss->VMacPriv = wnet_vif;
     }
+
+    ss->VMacPriv = wnet_vif;
 
     printk("%s vid:%d---> scan start, CfgFlags is:%08x, ss->ss_nssid:%d\n", __func__, wnet_vif->wnet_vif_id, ss->scan_CfgFlags, ss->ss_nssid);
     wifimac->wm_scanplayercnt++;

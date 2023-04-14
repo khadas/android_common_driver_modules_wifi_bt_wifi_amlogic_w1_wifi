@@ -733,8 +733,10 @@ void hi_soft_tx_irq(void)
 
     ASSERT(((hal_priv->txcompletestatus->txdoneframecounter - hal_priv->HalTxFrameDoneCounter)&0xff)
             <= WIFI_MAX_TXFRAME);
+    AML_TXLOCK_LOCK();
     hal_priv->txPageFreeNum +=
         (hal_priv->txcompletestatus->txpagecounter - hal_priv->HalTxPageDoneCounter) & 0xff;
+    AML_TXLOCK_UNLOCK();
     hal_priv->HalTxPageDoneCounter = hal_priv->txcompletestatus->txpagecounter;
 
     if (hal_priv->bhaltxdrop) {
