@@ -20,6 +20,7 @@
 #endif
 #include "wifi_mac_encrypt.h"
 #include <net/mac80211.h>
+#include "rc80211_minstrel.h"
 
 #define WIFINET_INACT_WAIT 1
 #define WIFINET_INACT_INIT (30/WIFINET_INACT_WAIT)
@@ -301,7 +302,7 @@ struct wifi_station
     struct minstrel_ht_sta_priv *sta_minstrel_ht_priv;
     struct minstrel_priv *sta_minstel_pri;
     struct minstrel_sta_info *sta_minstrel_info;
-    struct ieee80211_sta ieee_sta;
+    struct ieee80211_sta_aml ieee_sta;
     unsigned char sta_vendor_bw;
     unsigned char sta_vendor_rate_code;
     unsigned char is_disconnecting;

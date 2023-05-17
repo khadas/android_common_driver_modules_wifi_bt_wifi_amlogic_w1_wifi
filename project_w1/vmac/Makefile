@@ -69,7 +69,7 @@ CONFIG_MAC_SUPPORT=y
 CONFIG_WIFI_CAPTURE=y
 TARGET = vlsicomm
 
-EXTRA_CFLAGS += -Wno-enum-conversion
+EXTRA_CFLAGS += -Wno-enum-conversion -Wno-strict-prototypes
 EXTRA_CFLAGS += ${INCS}  -DCONFIG_WAPI
 EXTRA_CFLAGS += -Wall -Wno-unused-function #show all warning
 EXTRA_CFLAGS += -Werror -Wno-format -Wno-error #convert warning into error
@@ -110,6 +110,9 @@ ifeq ($(CLANG_VERSION), r437112)
 EXTRA_CFLAGS += -Wno-unused-but-set-variable
 endif
 ifeq ($(CLANG_VERSION), r450784d)
+EXTRA_CFLAGS += -Wno-unused-but-set-variable
+endif
+ifeq ($(CLANG_VERSION), r487747)
 EXTRA_CFLAGS += -Wno-unused-but-set-variable
 endif
 

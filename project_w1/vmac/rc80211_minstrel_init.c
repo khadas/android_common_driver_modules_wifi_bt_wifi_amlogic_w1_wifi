@@ -158,7 +158,7 @@ static struct aml_rate_adaptation_dev  g_aml_rate_adaptation_dev;
 static struct ieee80211_hw g_hw;
 static struct wiphy g_wiphy;
 
-static struct ieee80211_sta g_sta;
+static struct ieee80211_sta_aml g_sta;
 #ifdef AUTO_RATE_SIM
     static struct ieee80211_sta_rates g_rates[4];
     int g_rate_mode = 0;	/*0: legacy rate, 1:ht rate, 2:vht rate*/
@@ -196,7 +196,7 @@ void aml_minstrel_detach(void)
     g_minstel_pri = NULL;
 }
 
-unsigned int support_legacy_rate_init( struct wifi_station *sta ,  struct ieee80211_sta *p_ieee_sta,unsigned int channel_band)
+unsigned int support_legacy_rate_init( struct wifi_station *sta ,  struct ieee80211_sta_aml *p_ieee_sta,unsigned int channel_band)
 {
     int i = 0;
     unsigned int bit_val = 0;
@@ -270,7 +270,7 @@ unsigned int support_legacy_rate_init( struct wifi_station *sta ,  struct ieee80
     return 0;
 }
 
-void aml_rate_adaptation_dev_init(struct wifi_station *sta, int rate_mode, unsigned int channel_band, struct ieee80211_sta *p_ieee_sta)
+void aml_rate_adaptation_dev_init(struct wifi_station *sta, int rate_mode, unsigned int channel_band, struct ieee80211_sta_aml *p_ieee_sta)
 {
     g_aml_rate_adaptation_dev.num_rf_chains = 1;
 
@@ -427,7 +427,7 @@ void aml_minstrel_init(
 {
     struct minstrel_rate_control_ops *p_rate_control_ops = NULL;
     struct minstrel_rate_control_ops *p_rate_control_ops_ht = NULL;
-    struct ieee80211_sta *p_ieee_sta = NULL;
+    struct ieee80211_sta_aml *p_ieee_sta = NULL;
     struct wifi_station *sta  = (struct wifi_station *)p_sta;
     struct minstrel_ht_sta_priv *p_minstrel_ht_sta_priv = NULL;
     struct minstrel_sta_info *p_minstrel_sta_info = NULL;
@@ -539,7 +539,7 @@ void aml_minstrel_deinit(void *p_sta)
     sta->minstrel_init_flag = 0;
 }
 
-static void rate_control_fill_sta_table(struct ieee80211_sta *sta,
+static void rate_control_fill_sta_table(struct ieee80211_sta_aml *sta,
     struct ieee80211_tx_info *info, struct ieee80211_tx_rate *rates, int max_rates)
 {
     struct ieee80211_sta_rates *ratetbl = NULL;
@@ -614,7 +614,7 @@ int check_is_rate_fitable(struct wifi_station *sta, struct ieee80211_tx_info *in
     }
 }
 
-int minstrel_rate_index_to_vendor_rate_code(int minstrel_rate_idx, struct ieee80211_sta *p_ieee80211_sta)
+int minstrel_rate_index_to_vendor_rate_code(int minstrel_rate_idx, struct ieee80211_sta_aml *p_ieee80211_sta)
 {
     enum ieee80211_band band = g_aml_rate_adaptation_dev.sband->band;
 
@@ -709,7 +709,7 @@ unsigned char minstrel_find_rate(
     struct minstrel_rate_control_ops* p_rate_control_ops = NULL;
     void *priv_sta = NULL;
     int mcs_rate = 0;
-    struct ieee80211_sta *p_ieee_sta;
+    struct ieee80211_sta_aml *p_ieee_sta;
     struct minstrel_ht_sta_priv *p_minstrel_ht_sta_priv = NULL;
     struct minstrel_sta_info *p_minstrel_sta_info = NULL;
 
