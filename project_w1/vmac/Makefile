@@ -181,6 +181,7 @@ $(TARGET)-objs = $(TARGET_LIST)
 else
 
 modules:
+	-rm ./print_version.c
 	perl ./create_version_file.pl
 	@echo "UNO_GXL_SUB_P200=$(UNO_GXL_SUB_P200)"
 	@echo "PROJECT = $(PROJ_NAME)"
