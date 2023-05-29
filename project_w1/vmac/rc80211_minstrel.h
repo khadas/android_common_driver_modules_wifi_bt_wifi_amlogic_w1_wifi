@@ -86,7 +86,9 @@ struct ieee80211_sta_aml {
 	struct ieee80211_sta_ht_cap ht_cap;
 	struct ieee80211_sta_vht_cap vht_cap;
 	struct ieee80211_sta_he_cap he_cap;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0))
 	struct ieee80211_he_6ghz_capa he_6ghz_capa;
+#endif
 	u16 max_rx_aggregation_subframes;
 	bool wme;
 	u8 uapsd_queues;
@@ -104,7 +106,9 @@ struct ieee80211_sta_aml {
 	bool support_p2p_ps;
 	u16 max_rc_amsdu_len;
 	u16 max_tid_amsdu_len[IEEE80211_NUM_TIDS];
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0))
 	struct ieee80211_sta_txpwr txpwr;
+#endif
 
 	struct ieee80211_txq *txq[IEEE80211_NUM_TIDS + 1];
 
