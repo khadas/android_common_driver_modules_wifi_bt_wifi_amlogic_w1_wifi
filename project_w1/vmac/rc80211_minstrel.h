@@ -85,8 +85,8 @@ struct ieee80211_sta_aml {
 	u16 aid;
 	struct ieee80211_sta_ht_cap ht_cap;
 	struct ieee80211_sta_vht_cap vht_cap;
-	struct ieee80211_sta_he_cap he_cap;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0))
+	struct ieee80211_sta_he_cap he_cap;
 	struct ieee80211_he_6ghz_capa he_6ghz_capa;
 #endif
 	u16 max_rx_aggregation_subframes;
