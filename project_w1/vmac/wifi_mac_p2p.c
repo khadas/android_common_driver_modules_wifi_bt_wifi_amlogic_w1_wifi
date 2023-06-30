@@ -2455,6 +2455,8 @@ void vm_p2p_cancel_remain_channel(struct wifi_mac_p2p *p2p )
     int cnt = 0;
 
     AML_PRINT(AML_DBG_MODULES_P2P, "++\n");
+    p2p_pub_act = (struct wifi_mac_p2p_pub_act_frame *)(p2p->action_pkt + sizeof(struct wifi_frame));
+
     if (p2p_pub_act->action == WIFINET_ACT_PUBLIC_P2P) {
         while (p2p->tx_status_flag != WIFINET_TX_STATUS_SUCC
                && p2p->act_pkt_retry_count < DEFAULT_P2P_ACTION_RETRY_TIMES && cnt < 50) {

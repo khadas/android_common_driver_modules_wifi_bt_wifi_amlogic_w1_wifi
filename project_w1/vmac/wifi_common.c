@@ -166,8 +166,9 @@ int isFileReadable(const char *path, u32 *sz)
 */
 static int retriveFromFile(const char *path, u8 *buf, u32 sz)
 {
-    int ret = -1;
+
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0))
+    int ret = -1;
     mm_segment_t oldfs;
     struct file *fp;
 
