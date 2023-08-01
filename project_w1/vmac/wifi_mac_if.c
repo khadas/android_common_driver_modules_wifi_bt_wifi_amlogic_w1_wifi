@@ -1355,7 +1355,11 @@ const struct net_device_ops wifi_mac_netdev_ops =
     .ndo_start_xmit = wifi_mac_hardstart, // TCP/IP TX
     //netif_rx(skb);
     .ndo_change_mtu = wifi_mac_change_mtu,
-    .ndo_do_ioctl = wifi_mac_ioctrl,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+    .ndo_siocdevprivate     = wifi_mac_ioctrl_wrapper,
+#else
+    .ndo_do_ioctl           = wifi_mac_ioctrl,
+#endif
     .ndo_set_mac_address = wifi_set_mac_address,
 };
 
@@ -3315,9 +3319,8 @@ const char *wifi_mac_opmode_name[] =
     "P2P_DEV",
 };
 
-
-int
-wifi_mac_ioctrl(struct net_device *dev, struct ifreq *ifr, int cmd)
+static int
+__wifi_mac_ioctrl(struct net_device *dev, void __user *data, int cmd)
 {
     struct wlan_net_vif *wnet_vif = netdev_priv(dev);
 
@@ -3325,10 +3328,10 @@ wifi_mac_ioctrl(struct net_device *dev, struct ifreq *ifr, int cmd)
     switch (cmd) {
         case SIOCANDROID_PRIV:
             //return wifi_mac_stop(vmac->vm_dev);
-            return  aml_android_priv_cmd(wnet_vif, ifr, cmd);
+            return  aml_android_priv_cmd(wnet_vif, data, cmd);
 
         case SIOCG80211STATS:
-            return copy_to_user(ifr->ifr_data, &wnet_vif->vif_sts, sizeof (wnet_vif->vif_sts)) ? -EFAULT : 0;
+            return copy_to_user(data, &wnet_vif->vif_sts, sizeof (wnet_vif->vif_sts)) ? -EFAULT : 0;
 
         case SIOC80211IFDESTROY:
             if (!capable(CAP_NET_ADMIN))
@@ -3343,6 +3346,21 @@ wifi_mac_ioctrl(struct net_device *dev, struct ifreq *ifr, int cmd)
     }
     return -EOPNOTSUPP;
 }
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+int wifi_mac_ioctrl_wrapper(struct net_device *dev, struct ifreq *ifr,
+    void __user *data, int cmd)
+{
+    return __wifi_mac_ioctrl(dev,data,cmd);
+}
+#else
+
+int wifi_mac_ioctrl(struct net_device *dev, struct ifreq *ifr, int cmd)
+{
+    return __wifi_mac_ioctrl(dev,ifr->ifr_data,cmd);
+}
+
+#endif
 
 static int
 wifi_set_mac_address(struct net_device *dev, void *addr)

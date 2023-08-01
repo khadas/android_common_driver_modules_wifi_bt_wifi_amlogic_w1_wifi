@@ -16,8 +16,17 @@ extern int udp_cnt;
 extern unsigned char g_tx_power_change_disable;
 extern unsigned char g_initial_gain_change_disable;
 
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,15,0)
 extern int vm_cfg80211_set_bitrate_mask(struct wiphy *wiphy, struct net_device *dev,
     const unsigned char *peer, const struct cfg80211_bitrate_mask *mask);
+#else
+extern int vm_cfg80211_set_bitrate_mask(struct wiphy *wiphy, struct net_device *dev,
+                unsigned int link_id, const unsigned char *peer,
+                const struct cfg80211_bitrate_mask *mask);
+#endif
+
+
 void wifi_mac_pwrsave_set_inactime(struct wlan_net_vif *wnet_vif, unsigned int time);
 
 struct wlan_net_vif *aml_iwpriv_get_vif(char *name)
@@ -406,7 +415,12 @@ aml_iwpriv_set_lagecy_bitrate_mask(struct net_device *dev, unsigned int set)
     memset(&mask, 0, sizeof(struct cfg80211_bitrate_mask));
     mask.control[band].legacy = (1<<aml_iwpriv_legacy_2g_rate_to_bitmap(set));
     printk("%s %d, opmode %d, band %d\n", __func__, __LINE__, wnet_vif->vm_opmode, band);
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,15,0)
     vm_cfg80211_set_bitrate_mask(NULL, dev, NULL, &mask);
+#else
+    vm_cfg80211_set_bitrate_mask(NULL, dev, 0, NULL, &mask);
+#endif
 
     return 0;
 }
@@ -428,7 +442,11 @@ aml_iwpriv_set_ht_bitrate_mask(struct net_device *dev, unsigned int set)
 
     printk("%s %d, opmode %d, band %d\n", __func__, __LINE__, wnet_vif->vm_opmode, band);
     mask.control[band].ht_mcs[0] = (1<<aml_iwpriv_ht_rate_to_bitmap(set));
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,15,0)
     vm_cfg80211_set_bitrate_mask(NULL, dev, NULL, &mask);
+#else
+    vm_cfg80211_set_bitrate_mask(NULL, dev, 0, NULL, &mask);
+#endif
 
     return 0;
 }
@@ -450,7 +468,11 @@ aml_iwpriv_set_vht_bitrate_mask(struct net_device *dev, unsigned int set)
 
     printk("%s %d, opmode %d, band %d\n", __func__, __LINE__, wnet_vif->vm_opmode, band);
     mask.control[band].vht_mcs[0] = (1<<aml_iwpriv_vm_vht_rate_to_bitmap(set));
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,15,0)
     vm_cfg80211_set_bitrate_mask(NULL, dev, NULL, &mask);
+#else
+    vm_cfg80211_set_bitrate_mask(NULL, dev, 0, NULL, &mask);
+#endif
 
     return 0;
 }

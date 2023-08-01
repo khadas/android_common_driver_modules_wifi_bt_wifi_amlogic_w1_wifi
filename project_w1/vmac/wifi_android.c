@@ -191,7 +191,7 @@ static int aml_android_cmdstr_to_num(char *cmdstr)
 }
 
 #define PRIVATE_COMMAND_MAX_LEN	8192
- int aml_android_priv_cmd(struct wlan_net_vif *wnet_vif, struct ifreq *ifr, int cmd)
+ int aml_android_priv_cmd(struct wlan_net_vif *wnet_vif, void __user *data, int cmd)
 {
     int ret = 0;
     char *command = NULL;
@@ -211,8 +211,8 @@ static int aml_android_cmdstr_to_num(char *cmdstr)
         goto exit;
     }
 
-    if (!ifr->ifr_data) {
-        DPRINTF(AML_DEBUG_ANDROID,"%s %d ifr->ifr_data=NULL\n", __func__, __LINE__);
+    if (!data) {
+        DPRINTF(AML_DEBUG_ANDROID,"%s %d data=NULL\n", __func__, __LINE__);
         ret = -EINVAL;
         goto exit;
     }
@@ -225,7 +225,7 @@ static int aml_android_cmdstr_to_num(char *cmdstr)
 #endif
     {
         compat_android_wifi_priv_cmd compat_priv_cmd;
-        if (copy_from_user(&compat_priv_cmd, ifr->ifr_data, sizeof(compat_android_wifi_priv_cmd))) {
+        if (copy_from_user(&compat_priv_cmd, data, sizeof(compat_android_wifi_priv_cmd))) {
             ret = -EFAULT;
             goto exit;
         }
@@ -236,8 +236,8 @@ static int aml_android_cmdstr_to_num(char *cmdstr)
     } else
 #endif /* CONFIG_COMPAT */
     {
-        if (copy_from_user(&priv_cmd, ifr->ifr_data, sizeof(struct android_wifi_priv_cmd))) {
-            DPRINTF(AML_DEBUG_ANDROID,"%s %d copy_from_user ifr->ifr_data fail\n", __func__, __LINE__);
+        if (copy_from_user(&priv_cmd, data, sizeof(struct android_wifi_priv_cmd))) {
+            DPRINTF(AML_DEBUG_ANDROID,"%s %d copy_from_user data fail\n", __func__, __LINE__);
             ret = -EFAULT;
             goto exit;
         }
@@ -263,7 +263,7 @@ static int aml_android_cmdstr_to_num(char *cmdstr)
         goto exit;
     }
 
-    DPRINTF(AML_DEBUG_WARNING,"%s: Android private cmd \"%s\" on %s\n", __func__, command, ifr->ifr_name);
+    //DPRINTF(AML_DEBUG_WARNING,"%s: Android private cmd \"%s\" on %s\n", __func__, command, ifr->ifr_name);
 
     cmd_num = aml_android_cmdstr_to_num(command);
     DPRINTF(AML_DEBUG_ANDROID,"%s %d cmd_num=%d\n", __func__, __LINE__, cmd_num);

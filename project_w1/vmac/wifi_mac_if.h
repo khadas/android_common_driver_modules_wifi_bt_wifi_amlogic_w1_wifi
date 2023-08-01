@@ -350,6 +350,10 @@ void wifi_mac_tbtt_handle(struct wlan_net_vif *wnet_vif);
 void wifi_mac_channel_switch_complete(struct wlan_net_vif *wnet_vif);
 void wme_update_ex(struct wifi_mac *wifimac,struct wlan_net_vif *wnet_vif );
 void wifi_mac_tx_addba_check(struct wifi_station *sta,unsigned char tid_index);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+int wifi_mac_ioctrl_wrapper(struct net_device *dev, struct ifreq *ifr,
+    void __user *data, int cmd);
+#endif
 int wifi_mac_ioctrl(struct net_device *dev, struct ifreq *ifr, int cmd);
 void wnet_vif_vht_cap_init( struct wlan_net_vif *wnet_vif );
 int wifi_mac_setup(struct wifi_mac *, struct wlan_net_vif *, int opmode);
