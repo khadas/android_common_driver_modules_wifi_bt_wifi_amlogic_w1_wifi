@@ -2041,10 +2041,12 @@ vm_cfg80211_scan(struct wiphy *wiphy, struct cfg80211_scan_request *request)
 #endif
 
     /*need thinking more, maybe there are bugs happen*/
+    /*
     if (IS_APSTA_CONCURRENT(aml_wifi_get_con_mode()) && (wifimac->wm_nrunning == 2)) {
       DPRINTF(AML_DEBUG_WARNING, "%s(%d), rejected wlan0 scan due to softap working\n",__func__,__LINE__);
       return -EINVAL;
     }
+    */
 
     if (wifimac->wm_flags & WIFINET_F_SCAN) {
         if ((wnet_vif->wnet_vif_id != NET80211_MAIN_VMAC) || (pwdev_priv->scan_request == NULL)) {
@@ -4608,7 +4610,7 @@ vm_cfg80211_remain_on_channel(
 #endif
         p2p->work_channel = wifi_mac_find_chan(wifimac, target_channel, WIFINET_BWC_WIDTH20, target_channel);
 
-        if (wifi_mac_is_wm_running(wifimac) == true)
+        if (wifi_mac_is_wm_running(wifimac) == true && wnet_vif->vm_p2p_support == 1)
         {
             p2p->need_restore_bsschan = REASON_RESOTRE_BSSCHAN_REMAIN;
             wifi_mac_scan_notify_leave_or_back(wnet_vif, 1);
@@ -4760,9 +4762,9 @@ int vm_cfg80211_notify_mgmt_rx(struct wlan_net_vif *wnet_vif, unsigned short cha
     unsigned char *p2p_noa;
     dev = wnet_vif->vm_ndev;
 
-    if (wnet_vif->vm_curchan && (channel != wnet_vif->vm_curchan->chan_pri_num)) {
-        channel = wnet_vif->vm_curchan->chan_pri_num;
-    }
+    //if (wnet_vif->vm_curchan && (channel != wnet_vif->vm_curchan->chan_pri_num)) {
+        //channel = wnet_vif->vm_curchan->chan_pri_num;
+    //}
 
     if (channel <= CFG_CH_MAX_2G_CHANNEL)
         band = wdev->wiphy->bands[IEEE80211_BAND_2GHZ];

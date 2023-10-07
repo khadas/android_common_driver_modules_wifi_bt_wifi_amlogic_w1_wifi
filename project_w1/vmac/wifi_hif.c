@@ -1113,6 +1113,10 @@ void hi_irq_task(struct hal_private *hal_priv)
     {
         return ;
     }
+    if (wifi_sdio_access == 0)
+    {
+        return ;
+    }
 #endif
     if (atomic_read(&hal_priv->drv_suspend_cnt) != 0)
     {

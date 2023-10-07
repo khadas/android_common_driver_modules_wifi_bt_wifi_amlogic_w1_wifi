@@ -105,6 +105,7 @@ struct wifi_mac_scan_state
 
     struct os_timer_ext ss_scan_timer;
     struct os_timer_ext ss_probe_timer;
+    struct os_timer_ext ss_scan_abort_timer;
     struct hrtimer scan_hr_timer;
     ktime_t scan_kt;
 };
@@ -226,6 +227,7 @@ struct wifi_scan_info
 #define WIFINET_SCAN_PROTECT_TIME 1000
 #define WIFINET_SCAN_TIME_CHANNEL_SWITCH 500
 #define WIFINET_SCAN_TIME_BEFORE_CONNECT 200
+#define WIFINET_SCAN_ABORT_TIME 10000
 
 #ifndef FW_RF_CALIBRATION
 #define WIFINET_SCAN_TIME_CONNECT_DEFAULT 50

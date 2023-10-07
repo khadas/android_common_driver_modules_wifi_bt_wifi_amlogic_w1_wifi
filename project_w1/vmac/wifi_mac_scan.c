@@ -1514,6 +1514,29 @@ int wifi_mac_scan_timeout_ex(void *arg)
     return OS_TIMER_NOT_REARMED;
 }
 
+int wifi_mac_scan_abort_ex(void *arg)
+{
+    struct wifi_mac_scan_state *ss = (struct wifi_mac_scan_state *) arg;
+    struct wlan_net_vif *wnet_vif = ss->VMacPriv;
+    struct wifi_mac *wifimac = wnet_vif->vm_wmac;
+
+
+    if (wifimac->wm_flags & WIFINET_F_SCAN)
+    {
+        ss->scan_StateFlags |= SCANSTATE_F_CANCEL;
+        if (ss->scan_StateFlags & SCANSTATE_F_START)
+        {
+            os_timer_ex_cancel(&wifimac->wm_scan->ss_scan_timer, 1);
+            wifi_mac_scan_timeout_ex(wifimac->wm_scan);
+        }
+    }
+
+    DPRINTF(AML_DEBUG_WARNING, "%s %d ss->scan_StateFlags:%08x\n",
+        __func__,__LINE__, ss->scan_StateFlags);
+
+    return OS_TIMER_NOT_REARMED;
+}
+
 static void
 scan_start_task(SYS_TYPE param1,SYS_TYPE param2,
     SYS_TYPE param3,SYS_TYPE param4,SYS_TYPE param5)
@@ -1546,6 +1569,7 @@ scan_start_task(SYS_TYPE param1,SYS_TYPE param2,
     //set up scan channel index to 0
     ss->scan_next_chan_index = 0;
     printk("%s wm_nrunning:%d\n", __func__, wifimac->wm_nrunning);
+    os_timer_ex_start_period(&ss->ss_scan_abort_timer, WIFINET_SCAN_ABORT_TIME);
 
     if (wifimac->wm_nrunning == 0) {
         wifi_mac_scan_timeout_ex(ss);
@@ -1600,6 +1624,7 @@ void wifi_mac_end_scan( struct wifi_mac_scan_state *ss)
     }
 
     os_timer_ex_cancel(&ss->ss_scan_timer, CANCEL_SLEEP);
+    os_timer_ex_cancel(&ss->ss_scan_abort_timer, CANCEL_SLEEP);
     DPRINTF(AML_DEBUG_SCAN, "%s chan_index = %d ,scan_CfgFlags 0x%x, wifimac->wm_nrunning is:%d\n",
         __func__, ss->scan_next_chan_index, ss->scan_CfgFlags, wifimac->wm_nrunning);
 
@@ -2118,6 +2143,7 @@ void wifi_mac_scan_attach(struct wifi_mac *wifimac)
 #ifdef FW_RF_CALIBRATION
     os_timer_ex_initialize(&ss->ss_probe_timer, 0, wifi_mac_scan_send_probe_timeout_ex, ss);
 #endif
+    os_timer_ex_initialize(&ss->ss_scan_abort_timer, 0, wifi_mac_scan_abort_ex, ss);
     wifi_mac_scan_chk_leakap_hrtimer_attach(wifimac);
 
     wifimac->wm_scan->ScanTablePriv = st;
@@ -2131,6 +2157,7 @@ void wifi_mac_scan_detach(struct wifi_mac *wifimac)
     {
         DPRINTF(AML_DEBUG_INIT, "<running> %s %d \n",__func__,__LINE__);
         os_timer_ex_del(&ss->ss_scan_timer, CANCEL_SLEEP);
+        os_timer_ex_del(&ss->ss_scan_abort_timer, CANCEL_SLEEP);
         wifi_mac_scan_chk_leakap_hrtimer_cancel(wifimac);
 
 #ifdef FW_RF_CALIBRATION

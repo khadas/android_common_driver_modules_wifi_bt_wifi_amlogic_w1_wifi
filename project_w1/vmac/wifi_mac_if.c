@@ -3563,6 +3563,43 @@ int vm_wlan_net_vif_setup_forchvif(struct wifi_mac *wifimac,
     return 1;
 }
 
+static void aml_reg_notifier(struct wiphy *wiphy,
+               struct regulatory_request *request)
+{
+    struct wifi_mac *wifimac = wifi_mac_get_mac_handle();
+
+    if (!request)
+        return;
+
+    switch (request->initiator) {
+    case NL80211_REGDOM_SET_BY_CORE:
+        break;
+    case NL80211_REGDOM_SET_BY_DRIVER:
+        break;
+    case NL80211_REGDOM_SET_BY_USER:
+        wifi_mac_set_country(wifimac, request->alpha2);
+        break;
+    case NL80211_REGDOM_SET_BY_COUNTRY_IE:
+        break;
+    }
+}
+
+
+static void aml_regd_init(
+          struct wiphy *wiphy,
+          void (*reg_notifier)(struct wiphy *wiphy,
+              struct regulatory_request *request))
+{
+    wiphy->reg_notifier = reg_notifier;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0))
+        /*
+        *  To support GO working on DFS channel,
+        *  enable REGULATORY_IGNORE_STALE_KICKOFF flag.
+        *  It will not handle kernel regdomain change disconnect
+        */
+        wiphy->regulatory_flags |= (REGULATORY_IGNORE_STALE_KICKOFF);
+#endif
+}
 int
 vm_wlan_net_vif_register(struct wlan_net_vif *wnet_vif, char* name)
 {
@@ -3613,6 +3650,7 @@ vm_wlan_net_vif_register(struct wlan_net_vif *wnet_vif, char* name)
         ERROR_DEBUG_OUT("ERROR::%s: unable to register device\n", dev->name);
         return 0;
     }
+    aml_regd_init(wnet_vif->vm_wdev->wiphy, aml_reg_notifier);
     return 1;
 }
 
@@ -4247,6 +4285,8 @@ int wifi_mac_connect_repair(struct wifi_mac *wifimac)
             printk("get irq status done\n");
             wifi_mac_top_sm(wnet_vif, WIFINET_S_SCAN, 0);
             wifi_mac_fw_recovery(wnet_vif);
+            hi_get_irq_status();
+            hi_clear_irq_status(SDIO_FW2HOST_EN);
             break;
         case WIFINET_M_HOSTAP:
             break;
@@ -4344,8 +4384,10 @@ void wifi_mac_fw_recovery(struct wlan_net_vif *wnet_vif)
     /*todo fw recovery*/
     struct wifi_mac *wifimac = wnet_vif->vm_wmac;
     struct vm_wdev_priv *pwdev_priv = wdev_to_priv(wnet_vif->vm_wdev);
+    struct hal_private* hal_priv = hal_get_priv();
 
     wifimac->drv_priv->drv_ops.fw_repair(wifimac->drv_priv);
+    hal_priv->powersave_init_flag = 0;
     wifimac->drv_priv->drv_ops.drv_interface_enable(ENABLE, wnet_vif->wnet_vif_id);
 
     wifi_mac_clear_host_wake_status();

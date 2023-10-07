@@ -1184,6 +1184,7 @@ extern int wifi_irq_num(void);
 static void aml_sdio_shutdown(struct device *device)
 {
     printk("===>>> enter %s <<<===\n", __func__);
+    wifi_sdio_access = 0;
     if (wifi_irq_enable == 1) {
 #if (USE_SDIO_IRQ==1)
         struct sdio_func *func = g_w1_hwif_sdio.sdio_func_if[SDIO_FUNC1];

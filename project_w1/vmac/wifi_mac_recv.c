@@ -289,7 +289,7 @@ int wifi_mac_input(void *station, struct sk_buff *skb, struct wifi_mac_rx_status
     }
 
     if ((wnet_vif->vm_opmode == WIFINET_M_STA) && (wnet_vif->vm_state == WIFINET_S_CONNECTED)
-        && (!WIFINET_IS_PROBERSP(wh)) && (!WIFINET_IS_BEACON(wh))) {
+        && (!WIFINET_IS_PROBERSP(wh)) && (!WIFINET_IS_BEACON(wh)) && (!WIFINET_IS_ACTION(wh))) {
         bssid = wh->i_addr2;
         if (!WIFINET_ADDR_EQ(bssid, sta->sta_bssid)) {
             WIFINET_DPRINTF(AML_DEBUG_RECV, "%s,%s,%x%x\n", "not to bss",ether_sprintf(bssid),wh->i_fc[0],wh->i_fc[1]);
@@ -973,7 +973,12 @@ wifi_mac_deliver_data(struct wifi_station *sta, struct sk_buff *skb)
         }
         else
         {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+            netif_receive_skb(skb);
+#else
             netif_rx(skb);
+#endif
+
             os_skb_count_free(skb);
             wnet_vif->vif_sts.sts_rx_msdu++;
             wnet_vif->vif_sts.sts_rx_msdu_time_stamp = jiffies;
@@ -4517,7 +4522,7 @@ void wifi_mac_recv_action(struct wlan_net_vif *wnet_vif, struct wifi_station *st
         mdelay(50);
     }
 #endif
-    printk("recv_action_frame subtype %d, category %d\n", subtype, ia->ia_category);
+    printk("recv_action_frame subtype 0x%x, category %d\n", subtype, ia->ia_category);
 
         switch (ia->ia_category) {
             case AML_CATEGORY_QOS:
