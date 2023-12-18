@@ -47,6 +47,11 @@ extern struct hal_private g_hal_priv;
 #define COMMON_LOCK() do { OS_SPIN_LOCK_IRQ(&(g_hal_priv).com_spinlock, g_hal_priv.com_spinlock_flag); } while (0)
 #define COMMON_UNLOCK() do { OS_SPIN_UNLOCK_IRQ(&(g_hal_priv).com_spinlock, g_hal_priv.com_spinlock_flag); } while (0)
 
+#define WIFI_NETIF_RECV_SKB_INIT() spin_lock_init(&(g_hal_priv).skb_spinlock)
+#define WIFI_NETIF_RECV_SKB_DESTROY()
+#define WIFI_NETIF_RECV_SKB_LOCK() do { OS_SPIN_LOCK_IRQ(&(g_hal_priv).skb_spinlock, g_hal_priv.skb_spinlock_flag); } while (0)
+#define WIFI_NETIF_RECV_SKB_UNLOCK() do { OS_SPIN_UNLOCK_IRQ(&(g_hal_priv).skb_spinlock, g_hal_priv.skb_spinlock_flag); } while (0)
+
 #define AML_TXLOCK_INIT() spin_lock_init(&(g_hal_priv).tx_spinlock)
 #define AML_TXLOCK_DESTROY()
 #define AML_TXLOCK_LOCK() OS_SPIN_LOCK_IRQ(&(g_hal_priv).tx_spinlock, (g_hal_priv).tx_spinlock_flag);
