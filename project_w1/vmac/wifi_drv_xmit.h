@@ -4,7 +4,7 @@
 #include "wifi_drv_main.h"
 
 #define ADDBA_EXCHANGE_ATTEMPTS 10
-#define ADDBA_TIMEOUT 100 /* ms */
+#define ADDBA_TIMEOUT 1500 /* ms */
 
 #define BITS_PER_BYTE 8
 #define OFDM_PLCP_BITS 22
@@ -76,6 +76,7 @@ int drv_to_hal(struct drv_private *drv_priv, struct drv_txlist *txlist, struct l
 void drv_tx_complete(struct drv_private *drv_priv, struct drv_txdesc *ptxdesc, int txok);
 
 int drv_aggr_check(struct drv_private *drv_priv, void * nsta, unsigned char tid_index);
+int drv_aggr_tid( struct drv_private *drv_priv, void * nsta, unsigned char tid_index);
 int drv_aggr_allow_to_send(struct drv_private *drv_priv, void * nsta, unsigned char tid_index);
 void drv_set_ampduparams(struct drv_private *drv_priv, void *, unsigned short maxampdu, unsigned int mpdudensity);
 void drv_addba_req_setup(struct drv_private *drv_priv, void *, unsigned char tid_index, struct wifi_mac_ba_parameterset *baparamset,

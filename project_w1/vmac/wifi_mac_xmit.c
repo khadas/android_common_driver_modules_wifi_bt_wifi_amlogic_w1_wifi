@@ -168,6 +168,7 @@ void wifi_mac_xmit_pkt_parse(struct sk_buff *skb, struct wifi_mac *wifimac)
     static unsigned long in_time;
     static unsigned long tcp_tx_payload_total = 0;
     unsigned long tcp_tx_payload = 0;
+    unsigned char tid_index = 0;
 
     if ((eh->ether_type == __constant_htons(ETHERTYPE_PAE))
         ||(eh->ether_type == __constant_htons(ETHERTYPE_WPI))) {
@@ -257,6 +258,19 @@ void wifi_mac_xmit_pkt_parse(struct sk_buff *skb, struct wifi_mac *wifimac)
 
     } else if (eh->ether_type == __constant_htons(ETHERTYPE_ARP)) {
         mac_pkt_info->b_arp = 1;
+    }
+
+    if (mac_pkt_info->b_arp || mac_pkt_info->b_dhcp || mac_pkt_info->b_eap) {
+        for (tid_index = 1; tid_index < WME_NUM_TID; tid_index++) {
+            if (!wifimac->drv_priv->drv_ops.aggr_tid_query(wifimac->drv_priv, sta->drv_sta, tid_index)) {
+                cb->u_tid = tid_index;
+                break;
+            }
+        }
+        if (tid_index >= WME_NUM_TID) {
+            AML_OUTPUT("all tid with ba session, set arp dhcp eap tid 2\n");
+            cb->u_tid = 2;
+        }
     }
 }
 
@@ -1000,7 +1014,7 @@ struct sk_buff *wifi_mac_encap(struct wifi_station *sta, struct sk_buff *skb)
         key = NULL;
     }
 
-    if ((sta->sta_flags & WIFINET_NODE_QOS) && !mac_pkt_info->b_eap && !mac_pkt_info->b_dhcp && !mac_pkt_info->b_arp)
+    if (sta->sta_flags & WIFINET_NODE_QOS)
     {
         hdrsize = sizeof(struct wifi_qos_frame);
         addqos = 1;
@@ -3427,7 +3441,6 @@ int wifi_mac_send_mgmt(struct wifi_station *sta, int type, void *arg)
     unsigned char retry_count;
 
     KASSERT(sta != NULL, ("null nsta"));
-
 
     switch (type) {
         case WIFINET_FC0_SUBTYPE_PROBE_RESP:

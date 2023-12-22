@@ -1265,6 +1265,7 @@ static void drv_init_ops(struct drv_private *drv_priv)
     drv_priv->drv_ops.rx_init = drv_rx_init;                /* rx_init */
     drv_priv->drv_ops.rx_proc_frame = drv_rx_input;               /* rx_proc_frame */
     drv_priv->drv_ops.check_aggr = drv_aggr_check;             /* check_aggr */
+    drv_priv->drv_ops.aggr_tid_query = drv_aggr_tid;             /* aggr_tid_query */
     drv_priv->drv_ops.check_aggr_allow_to_send = drv_aggr_allow_to_send;      /* drv_aggr_allow_to_send */
     drv_priv->drv_ops.set_ampdu_params = drv_set_ampduparams;        /* set_ampdu_params */
     drv_priv->drv_ops.addba_request_setup = drv_addba_req_setup;     /* addba_request_setup */
@@ -1593,7 +1594,7 @@ static void drv_tx_pkt_clear(void *drv_priv)
 
 static void
 drv_intr_rx_ok(void * dpriv,struct sk_buff *skb, unsigned char Rssi,unsigned char vendor_rate_code,
-    unsigned char channel, unsigned char aggr, unsigned char wnet_vif_id, unsigned char keyid)
+        unsigned char bw, unsigned char channel, unsigned char aggr, unsigned char wnet_vif_id, unsigned char keyid)
 {
     struct wifi_mac *wifimac;
     struct drv_private *drv_priv = (struct drv_private *)dpriv;
@@ -1611,6 +1612,8 @@ drv_intr_rx_ok(void * dpriv,struct sk_buff *skb, unsigned char Rssi,unsigned cha
     rxstatus.rs_channel = channel;
     rxstatus.rs_rssi = Rssi;
     rxstatus.rs_datarate = drv_priv->drv_currratetable->info[rate_index].rateKbps;
+    rxstatus.rs_vendor_rate = vendor_rate_code;
+    rxstatus.rs_bw = bw;
     rxstatus.rs_tstamp.tsf = jiffies;
     rxstatus.rs_wnet_vif_id = wnet_vif_id;
     rxstatus.rs_keyid = keyid ;

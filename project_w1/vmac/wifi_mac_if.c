@@ -654,7 +654,7 @@ int wifi_mac_tx_send(struct sk_buff *skbbuf)
     ASSERT(sizeof(struct wifi_mac_tx_info) <= OS_SKB_CB_MAXLEN);
 
     mac_pkt_info= &txinfo->ptxdesc->drv_pkt_info.pkt_info[0];
-    if (mac_pkt_info->b_eap == 0) {
+    if (mac_pkt_info->b_eap == 0 && mac_pkt_info->b_arp == 0 && mac_pkt_info->b_dhcp == 0) {
         wifi_mac_tx_addba_check(sta, os_skb_get_tid(skbbuf));
     }
 
@@ -1156,6 +1156,8 @@ int wifi_mac_rx_complete(void *ieee,struct sk_buff *skbbuf, struct wifi_mac_rx_s
     if (WIFINET_IS_DATA(wh)) {
         if (rs->rs_datarate > 0) {
             sta->sta_last_rxrate = rs->rs_datarate;
+            sta->sta_last_rx_vendor_rate = rs->rs_vendor_rate;
+            sta->sta_last_rx_bw = rs->rs_bw;
         }
     }
 
@@ -2804,6 +2806,16 @@ static void wifi_mac_check_special_ap(struct wlan_net_vif *wnet_vif)
     }
 }
 
+static void
+wifi_mac_trigger_sae_task(SYS_TYPE param1,SYS_TYPE param2,
+    SYS_TYPE param3,SYS_TYPE param4,SYS_TYPE param5)
+{
+    struct wifi_station *sta = (struct wifi_station *)param1;
+
+    wifi_mac_trigger_sae(sta);
+    return;
+}
+
 
 static int
 wifi_mac_sub_sm(struct wlan_net_vif *wnet_vif, enum wifi_mac_state nstate, int arg)
@@ -3001,7 +3013,8 @@ wifi_mac_sub_sm(struct wlan_net_vif *wnet_vif, enum wifi_mac_state nstate, int a
                 case WIFINET_S_CONNECTING:
                     if (sta->sta_authmode == WIFINET_AUTH_SAE) {
 #if (KERNEL_VERSION(4, 17, 0) <= LINUX_VERSION_CODE) || (defined WPA3_PATCH)
-                            wifi_mac_trigger_sae(sta);
+                       //wifi_mac_trigger_sae(sta);
+                       wifi_mac_add_work_task(wifimac, wifi_mac_trigger_sae_task, NULL, (SYS_TYPE)sta, 0, 0, 0, 0);
 #endif
 
                     } else  {
@@ -3016,7 +3029,8 @@ wifi_mac_sub_sm(struct wlan_net_vif *wnet_vif, enum wifi_mac_state nstate, int a
                         && (sta->sta_authmode == WIFINET_AUTH_SAE)
                         && (arg == WIFINET_STATUS_INVALID_PMKID)) {
 #if (KERNEL_VERSION(4, 17, 0) <= LINUX_VERSION_CODE) || (defined WPA3_PATCH)
-                        wifi_mac_trigger_sae(sta);
+                        //wifi_mac_trigger_sae(sta);
+                        wifi_mac_add_work_task(wifimac, wifi_mac_trigger_sae_task, NULL, (SYS_TYPE)sta, 0, 0, 0, 0);
 #endif
 
                     } else if (arg == WIFINET_FC0_SUBTYPE_AUTH) {

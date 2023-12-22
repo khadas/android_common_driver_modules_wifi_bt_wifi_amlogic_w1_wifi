@@ -156,7 +156,7 @@ static int _aml_w1_sdio_request_byte(unsigned char func_num,
     ASSERT(func->num == func_num);
 
     AML_W1_BT_WIFI_MUTEX_ON();
-    kmalloc_buf =  (unsigned char *)kzalloc(len, GFP_DMA);//virt_to_phys(fwICCM);
+    kmalloc_buf =  (unsigned char *)kzalloc(len, GFP_DMA | GFP_ATOMIC);//virt_to_phys(fwICCM);
     if (kmalloc_buf == NULL)
     {
         ERROR_DEBUG_OUT("kmalloc buf fail\n");
@@ -370,7 +370,7 @@ int aml_w1_sdio_bottom_write(unsigned char func_num, int addr, void *buf, size_t
     }
 
     AML_W1_BT_WIFI_MUTEX_ON();
-    kmalloc_buf =  (unsigned char *)kzalloc(len, GFP_DMA);//virt_to_phys(fwICCM);
+    kmalloc_buf =  (unsigned char *)kzalloc(len, GFP_DMA | GFP_ATOMIC);//virt_to_phys(fwICCM);
     if(kmalloc_buf == NULL)
     {
         ERROR_DEBUG_OUT("kmalloc buf fail\n");
@@ -1340,7 +1340,7 @@ int  aml_w1_sdio_init(void)
     if (err)
         PRINT("failed to register sdio driver: %d \n", err);
 
-        return err;
+    return err;
 }
 EXPORT_SYMBOL(aml_w1_sdio_init);
 

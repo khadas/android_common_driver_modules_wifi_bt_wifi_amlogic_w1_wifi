@@ -1686,6 +1686,7 @@ int wifi_mac_pwrsave_wow_suspend(SYS_TYPE param1,
         {
             ERROR_DEBUG_OUT("<%s>:wait scan end fail when host suspend \n",
                 wnet_vif->vm_ndev->name);
+            wnet_vif->vm_scan_hang = 0;
             WIFINET_PWRSAVE_MUTEX_UNLOCK(wnet_vif);
             return -1;
         }
@@ -1704,6 +1705,7 @@ int wifi_mac_pwrsave_wow_suspend(SYS_TYPE param1,
         /* need to wait for transmitting data out. waitting suspend
          * command again and try to suspend wifi.
          */
+        wnet_vif->vm_scan_hang = 0;
         WIFINET_PWRSAVE_MUTEX_UNLOCK(wnet_vif);
         return -EINVAL;
         #endif

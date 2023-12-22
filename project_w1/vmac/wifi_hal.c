@@ -273,7 +273,7 @@ void hal_soft_rx_cs(struct hal_private *hal_priv, struct sk_buff *skb)
 
         // push to upper layer
         hal_priv->hal_call_back->intr_rx_handle(hal_priv->drv_priv, skb, RxPrivHdr_bit->RxRSSI_ant0,
-            RxPrivHdr_bit->RxRate, RxPrivHdr_bit->RxChannel, RxPrivHdr_bit->aggregation, wnet_vif_id,RxPrivHdr_bit->key_id);
+            RxPrivHdr_bit->RxRate, RxPrivHdr_bit->Channel_BW, RxPrivHdr_bit->RxChannel, RxPrivHdr_bit->aggregation, wnet_vif_id,RxPrivHdr_bit->key_id);
     }
 }
 #elif defined (HAL_SIM_VER)
@@ -380,6 +380,7 @@ void hal_soft_rx_cs(struct hal_private *hal_priv, struct sk_buff *skb)
         hal_priv->hal_call_back->intr_rx_handle( hal_priv->drv_priv,
                                         skb,RxPrivHdr_bit->RxRSSI_ant0,
                                         RxPrivHdr_bit->RxRate,
+                                        RxPrivHdr_bit->Channel_BW,
                                         RxPrivHdr_bit->RxChannel, RxPrivHdr_bit->aggregation,
                                         RxPrivHdr_bit->RxA1match_id,RxPrivHdr_bit->key_id );
         }

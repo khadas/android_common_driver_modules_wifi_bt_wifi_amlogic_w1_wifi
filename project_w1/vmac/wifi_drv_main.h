@@ -384,6 +384,7 @@ struct driver_ops
 
     /* aggregation callbacks */
     int          (*check_aggr)(struct drv_private *, void *, unsigned char tid_index);
+    int          (*aggr_tid_query)(struct drv_private *, void *, unsigned char tid_index);
     int          (*check_aggr_allow_to_send)(struct drv_private *, void *, unsigned char tid_index);
     void        (*set_ampdu_params)(struct drv_private *, void *, unsigned short maxampdu, unsigned int mpdudensity);
     void        (*addba_request_setup)(struct drv_private *, void *, unsigned char tid_index,

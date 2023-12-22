@@ -649,6 +649,20 @@ cfg80211_informbss_cb(void *arg, const struct wifi_scan_info *se)
         len += ielen;
     }
 
+    if (lse->SI_country_ie[1])
+    {
+        ielen = wifi_mac_copy_ie(pbuf, lse->SI_country_ie, SCANINFO_IE_DATA_LENGTH);
+        pbuf += ielen;
+        len += ielen;
+    }
+
+    if (lse->SI_bss_load_ie[1])
+    {
+        ielen = wifi_mac_copy_ie(pbuf, lse->SI_bss_load_ie, SCANINFO_IE_DATA_LENGTH);
+        pbuf += ielen;
+        len += ielen;
+    }
+
     if (lse->SI_htcap_ie[1])
     {
         ielen = wifi_mac_copy_ie(pbuf, lse->SI_htcap_ie, SCANINFO_IE_DATA_LENGTH);
@@ -712,6 +726,13 @@ cfg80211_informbss_cb(void *arg, const struct wifi_scan_info *se)
         len += ielen;
     }
 #endif//CONFIG_WFD
+    if (lse->ie_ext_cap[0] == WIFINET_ELEMID_EXTCAP )
+    {
+       ielen = wifi_mac_copy_ie(pbuf, lse->ie_ext_cap, SCANINFO_IE_DATA_LENGTH);
+       ie_dbg(pbuf);
+       pbuf += ielen;
+       len += ielen;
+    }
 
      if(lse->ie_vht_cap[0] == WIFINET_ELEMID_VHTCAP )
      {
@@ -4432,6 +4453,16 @@ static int vm_cfg80211_get_rate_index(struct wifi_station *sta)
     return rate_index;
 }
 
+static int vm_cfg80211_get_mcs(unsigned char code, unsigned char *flags)
+{
+    if ((code & 0xf0) == 0xc0) {
+        *flags = 0x02;
+    } else if ((code & 0xf0) == 0x80) {
+        *flags = 0x01;
+    }
+    return (code & 0x0f);
+}
+
 static int
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0))
 vm_cfg80211_get_station(struct wiphy *wiphy, struct net_device *dev,
@@ -4446,6 +4477,7 @@ vm_cfg80211_get_station(struct wiphy *wiphy, struct net_device *dev,
     struct wifi_mac *wifimac = wnet_vif->vm_wmac;
     struct wifi_station *sta = NULL;
     unsigned char rate_index = 0;
+    unsigned char rate_flags = 0;
     const struct drv_rate_table *rt = wifimac->drv_priv->drv_currratetable;
 
     DPRINTF(AML_DEBUG_CONNECT, "%s vid:%d, mac:%02x:%02x:%02x:%02x:%02x:%02x\n",
@@ -4484,8 +4516,23 @@ vm_cfg80211_get_station(struct wiphy *wiphy, struct net_device *dev,
     sinfo->filled |= STATION_INFO_TX_BITRATE;
 
     rate_index = vm_cfg80211_get_rate_index(sta);
-
     sinfo->txrate.legacy = rt->info[rate_index].rateKbps / 100;
+    sinfo->txrate.mcs = vm_cfg80211_get_mcs(sta->sta_vendor_rate_code, &rate_flags);
+    sinfo->txrate.flags = rate_flags;
+    sinfo->txrate.nss = 1;
+    sinfo->txrate.bw = sta->sta_vendor_bw == 0 ? 0 : sta->sta_vendor_bw == 1 ? 3 : 4;
+
+
+    sinfo->filled |= STATION_INFO_RX_BITRATE;
+    rate_flags = 0;
+    sinfo->rxrate.mcs = vm_cfg80211_get_mcs(sta->sta_last_rx_vendor_rate, &rate_flags);
+    sinfo->rxrate.flags = rate_flags;
+    sinfo->rxrate.legacy = sta->sta_last_rxrate;
+    if ( !rate_flags ) {
+        sinfo->rxrate.legacy = sta->sta_last_rxrate / 100;
+    }
+    sinfo->rxrate.nss = 1;
+    sinfo->rxrate.bw = sta->sta_last_rx_bw == 0 ? 0 : sta->sta_last_rx_bw == 1 ? 3 : 4;
 
     sinfo->filled |= STATION_INFO_BSS_PARAM;
     sinfo->bss_param.flags = 0;
@@ -4495,8 +4542,8 @@ vm_cfg80211_get_station(struct wiphy *wiphy, struct net_device *dev,
     sinfo->filled |= STATION_INFO_INACTIVE_TIME;
     sinfo->inactive_time = (unsigned int)((jiffies - sta->sta_inact_time) * 1000 / HZ);
 
-    DPRINTF(AML_DEBUG_CONNECT, "%s signal:%d, tx_bytes:%lld, tx_packets:%d, tx_failed:%d, txrate.legacy:%d, inactive_time:%x\n",
-        __func__, sinfo->signal, sinfo->tx_bytes, sinfo->tx_packets, sinfo->tx_failed, sinfo->txrate.legacy, sinfo->inactive_time);
+    DPRINTF(AML_DEBUG_CONNECT, "%s signal:%d, tx_bytes:%lld, tx_packets:%d, tx_failed:%d, txrate.legacy:%d, inactive_time:%x sinfo->rxrate.legacy=%d\n",
+        __func__, sinfo->signal, sinfo->tx_bytes, sinfo->tx_packets, sinfo->tx_failed, sinfo->txrate.legacy, sinfo->inactive_time,sinfo->rxrate.legacy);
     return ret;
 }
 
@@ -4516,7 +4563,7 @@ static void vm_cancel_remain_channel(struct wlan_net_vif *wnet_vif)
     cfg80211_remain_on_channel_expired(wnet_vif->vm_wdev, wnet_vif->remain_on_ch_cookie,
         &wnet_vif->remain_on_ch_channel, GFP_KERNEL);
 }
-unsigned char g_mode = 0;
+
 static int
 vm_cfg80211_remain_on_channel(
     struct wiphy *wiphy,
@@ -4578,75 +4625,48 @@ vm_cfg80211_remain_on_channel(
 
     preempt_scan(ndev, 100, 100);
     target_channel = ieee80211_frequency_to_channel(channel->center_freq);
-    if (g_mode == 0)
+
+    if (p2p->wnet_vif->vm_flags & WIFINET_F_NOSCAN)
     {
-        if (p2p->wnet_vif->vm_flags & WIFINET_F_NOSCAN)
-        {
-            DPRINTF(AML_DEBUG_WARNING, "%s %d center_freq %d ,multiple remainchan, should not happen\n",
-                __func__, __LINE__, channel->center_freq);
-            vm_p2p_cancel_remain_channel(p2p);
-        }
-        memcpy(&p2p->remain_on_ch_channel, channel, sizeof(struct ieee80211_channel));
-        p2p->remain_on_ch_cookie = *cookie ;
+        DPRINTF(AML_DEBUG_WARNING, "%s %d center_freq %d ,multiple remainchan, should not happen\n",
+            __func__, __LINE__, channel->center_freq);
+        vm_p2p_cancel_remain_channel(p2p);
+    }
+    memcpy(&p2p->remain_on_ch_channel, channel, sizeof(struct ieee80211_channel));
+    p2p->remain_on_ch_cookie = *cookie ;
 
 #ifdef CONFIG_CONCURRENT_MODE
-        concurrent_channel_protection(wnet_vif, 600);
+    concurrent_channel_protection(wnet_vif, 600);
 
-        if (restore_duration < 2)
-        {
-            restore_duration = (++p2p->p2p_listen_count % 2 + 2);
-
-        }
-        else if (restore_duration > 5)
-        {
-            restore_duration = (++p2p->p2p_listen_count % 4 + 1);
-        }
-
-        if (p2p->p2p_listen_count == 12)
-        {
-            restore_duration = 5;
-            p2p->p2p_listen_count = 0;
-        }
-#endif
-        p2p->work_channel = wifi_mac_find_chan(wifimac, target_channel, WIFINET_BWC_WIDTH20, target_channel);
-
-        if (wifi_mac_is_wm_running(wifimac) == true && wnet_vif->vm_p2p_support == 1)
-        {
-            p2p->need_restore_bsschan = REASON_RESOTRE_BSSCHAN_REMAIN;
-            wifi_mac_scan_notify_leave_or_back(wnet_vif, 1);
-            p2p->p2p_flag |= P2P_WAIT_SWITCH_CHANNEL;
-        } else {
-            wifi_mac_ChangeChannel(wifimac, p2p->work_channel, 0, wnet_vif->wnet_vif_id);
-        }
-        printk("p2p_case: duration %d\n", restore_duration * 100);
-        cfg80211_ready_on_channel(p2p->wnet_vif->vm_wdev, *cookie, channel,
-        vm_p2p_discover_listen(p2p, target_channel, restore_duration * 100), GFP_KERNEL);
-    }
-    else
+    if (restore_duration < 2)
     {
-        memcpy(&wnet_vif->remain_on_ch_channel, channel, sizeof(struct ieee80211_channel));
-        wnet_vif->remain_on_ch_cookie = *cookie;
+        restore_duration = (++p2p->p2p_listen_count % 2 + 2);
 
-        wnet_vif->vm_remainonchan = wifi_mac_find_chan(wifimac, target_channel, WIFINET_BWC_WIDTH20, target_channel);
-
-        printk("vm_cfg80211_remain_on_channel: sta case, duration %d\n", duration);
-
-        if (wifi_mac_is_wm_running(wifimac) == true)
-        {
-            wifi_mac_scan_notify_leave_or_back(wnet_vif, 1);
-            wnet_vif->vm_flags_ext2 |= WIFINET_FEXT2_SWITCH_CHANNEL;
-        } else {
-            wifi_mac_ChangeChannel(wifimac, wnet_vif->vm_remainonchan, 0, wnet_vif->wnet_vif_id);
-        }
-
-        /*if (duration < 200)
-              duration = 200;
-          if (duration > 500)
-              duration = 500;*/
-
-        os_timer_ex_start_period(&wnet_vif->vm_roc_timer, duration);
-            cfg80211_ready_on_channel(wdev, *cookie, channel, duration, GFP_KERNEL);
     }
+    else if (restore_duration > 5)
+    {
+        restore_duration = (++p2p->p2p_listen_count % 4 + 1);
+    }
+
+    if (p2p->p2p_listen_count == 12)
+    {
+        restore_duration = 5;
+        p2p->p2p_listen_count = 0;
+    }
+#endif
+    p2p->work_channel = wifi_mac_find_chan(wifimac, target_channel, WIFINET_BWC_WIDTH20, target_channel);
+
+    if (wifi_mac_is_wm_running(wifimac) == true && wnet_vif->vm_p2p_support == 1)
+    {
+        p2p->need_restore_bsschan = REASON_RESOTRE_BSSCHAN_REMAIN;
+        wifi_mac_scan_notify_leave_or_back(wnet_vif, 1);
+        p2p->p2p_flag |= P2P_WAIT_SWITCH_CHANNEL;
+    } else {
+        wifi_mac_ChangeChannel(wifimac, p2p->work_channel, 0, wnet_vif->wnet_vif_id);
+    }
+    printk("p2p_case: duration %d\n", restore_duration * 100);
+    cfg80211_ready_on_channel(p2p->wnet_vif->vm_wdev, *cookie, channel,
+    vm_p2p_discover_listen(p2p, target_channel, restore_duration * 100), GFP_KERNEL);
 
     wnet_vif->remain_on_channel = 1;
 
@@ -4700,7 +4720,7 @@ static int vm_cfg80211_cancel_remain_on_channel(struct wiphy *wiphy,
 
     return 0;
 }
-unsigned int g_mgmt_index= 100;
+
 int vm_cfg80211_send_mgmt(struct wlan_net_vif *wnet_vif, const unsigned char *buf, int len)
 {
     struct wifi_skb_callback *cb;
@@ -4737,9 +4757,6 @@ int vm_cfg80211_send_mgmt(struct wlan_net_vif *wnet_vif, const unsigned char *bu
 
     *(unsigned short *)&wh->i_dur[0] = 0;
     *(unsigned short *)wh->i_seq = 0;
-
-    *(unsigned short *)wh->i_seq = g_mgmt_index<<4;
-    g_mgmt_index++;
 
     wifi_mac_tx_mgmt_frm(wifimac, skb);
 
@@ -5133,9 +5150,6 @@ static int vm_cfg80211_mgmt_tx_sta(struct wiphy *wiphy, struct wireless_dev *wde
     struct wifi_channel *auth_channel;
     unsigned short seq = 0;
     struct wifi_mac_pub_gas_act_frame *pub_gas_act = NULL;
-    /*int len = 0;
-    int i;
-    int j;*/
 
     wh = (const struct wifi_frame*)params->buf;
     pub_gas_act = (struct wifi_mac_pub_gas_act_frame *)(params->buf + sizeof(struct wifi_frame));
@@ -5545,7 +5559,6 @@ vm_cfg80211_set_cqm_rssi_cfg(struct wiphy *wiphy,
     wnet_vif->vm_wmac->drv_priv->drv_config.cqm_rssi_thold = rssi_thold;
     wnet_vif->vm_wmac->drv_priv->drv_config.cqm_rssi_hyst = rssi_hyst;
     printk("---rssi_thold:%d, rssi_hyst:%d\n", rssi_thold, rssi_hyst);
-    wifi_mac_top_sm(wnet_vif, WIFINET_S_SCAN, 0);
 
     return 0;
 }
@@ -5933,12 +5946,6 @@ int vm_cfg80211_vnd_cmd_set_para(struct wiphy *wiphy, struct wireless_dev *wdev,
                 wifi_mac_top_sm(wnet_vif, WIFINET_S_SCAN, 0);
             }
             printk("Cfg80211: Set ampdu done:%d\n",usr_data);
-            break;
-        case 0x22:
-            g_mode = 0;
-            break;
-        case 0x23:
-            g_mode = 1;
             break;
 
         case VM_NL80211_VENDER_SUBCMD_B2BNCTYPE:

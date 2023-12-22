@@ -821,8 +821,11 @@ void hi_soft_fw_event(void)
         struct fw_event_no_data *normal_event = NULL;
 
         normal_event = &hal_priv->fw_event->event_data[hal_priv->hal_fw_event_counter % WIFI_MAX_FW_EVENT].normal_event;
-        hal_priv->hal_fw_event_counter++;
         hal_priv->hal_call_back->intr_fw_event(hal_priv->drv_priv, normal_event);
+        event->event_data[0].data[28] = hal_priv->hal_fw_event_counter;
+        hif->hif_ops.hi_write_sram((unsigned char *)&event->event_data[0].data[28],
+            (unsigned char *)(SYS_TYPE)(hw_event_addr+32), (SYS_TYPE)(sizeof(unsigned char)*4));
+        hal_priv->hal_fw_event_counter++;
     }
 
     return;

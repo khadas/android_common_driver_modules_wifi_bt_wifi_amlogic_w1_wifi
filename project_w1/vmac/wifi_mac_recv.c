@@ -3043,6 +3043,11 @@ void wifi_mac_pkt_parse_element(struct wlan_net_vif *wnet_vif,
                 break;
 #endif //#ifdef CONFIG_WAPI
 
+            case WIFINET_ELEMID_EXTCAP:
+                    scan->ext_cap = frm;
+
+                break;
+
             case WIFINET_ELEMID_VHTCAP:
                 if (drv_priv->drv_config.cfg_mac_mode >= CFG_11AC)
                     scan->vht_cap = frm;
@@ -3077,6 +3082,9 @@ void wifi_mac_pkt_parse_element(struct wlan_net_vif *wnet_vif,
 
             case WIFINET_ELEMID_RSNX:
                 scan->rsnxe = frm;
+                break;
+            case WIFINET_ELEMID_BSS_LOAD:
+                scan->bss_load = frm;
                 break;
 
             default:
@@ -4504,7 +4512,6 @@ void wifi_mac_recv_action(struct wlan_net_vif *wnet_vif, struct wifi_station *st
 #endif
             {
                 wnet_vif->vif_sts.sts_mng_discard++;
-                printk("wifi_mac_recv_action: discard %d, %d\n", wnet_vif->vm_p2p_support, wnet_vif->vm_p2p->p2p_enable);
                 return;
             }
         }*/
@@ -4576,11 +4583,16 @@ void wifi_mac_recv_action(struct wlan_net_vif *wnet_vif, struct wifi_station *st
 
                         statuscode = le16toh(addbaresponse->rs_statuscode);
                         *(unsigned short *)&baparamset = le16toh(*(unsigned short *)&addbaresponse->rs_baparamset);
+                        tid = DRV_GET_TIDTXINFO(drv_sta, baparamset.tid);
+                        if (tid->addba_exchangeinprogress == 0) {
+                            AML_OUTPUT("discard addba response, tid %d\n", tid->tid_index);
+                            break;
+                        }
                         batimeout = le16toh(addbaresponse->rs_batimeout);
                         wifi_mac_addba_rsp(sta, statuscode, &baparamset, batimeout);
 
                         //check and triger tid queue
-                        tid = DRV_GET_TIDTXINFO(drv_sta, baparamset.tid);
+
                         tid->tid_tx_buff_sending = 1;
                         wifi_mac_buffer_txq_send(&tid->tid_tx_buffer_queue);
 

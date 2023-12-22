@@ -132,6 +132,7 @@ struct wifi_mac_scan_param
     unsigned char *tim;
     unsigned char *tstamp;
     unsigned char *country;
+    unsigned char *bss_load;
     unsigned char *ssid;
     unsigned char *rates;
     unsigned char *xrates;
@@ -155,6 +156,7 @@ struct wifi_mac_scan_param
 #ifdef CONFIG_WAPI
     unsigned char *wai;
 #endif //#ifdef CONFIG_WAPI
+    unsigned char *ext_cap;
     unsigned char *vht_cap;
     unsigned char *vht_opt;
     unsigned char *vht_tx_pwr;
@@ -190,6 +192,7 @@ struct wifi_scan_info
     unsigned char  SI_htcap_ie[SCANINFO_IE_LENGTH];
     unsigned char  SI_htinfo_ie[SCANINFO_IE_LENGTH];
     unsigned char  SI_country_ie[SCANINFO_IE_LENGTH];
+    unsigned char  SI_bss_load_ie[SCANINFO_IE_LENGTH];
     unsigned int SI_age;
     unsigned char  SI_rsn_ie[SCANINFO_IE_LENGTH];
     unsigned char  SI_rsnx_ie[SCANINFO_IE_LENGTH];
@@ -207,6 +210,7 @@ struct wifi_scan_info
     unsigned char  SI_wfd_ie[SCANINFO_IE_LENGTH];
 #endif /*CONFIG_WFD*/
 
+    unsigned char ie_ext_cap[sizeof(struct wifi_mac_ie_ext_cap )];
     unsigned char ie_vht_cap[sizeof(struct wifi_mac_ie_vht_cap )];
     unsigned char ie_vht_opt[sizeof(struct wifi_mac_ie_vht_opt)];
     unsigned char ie_vht_tx_pwr[sizeof(struct wifi_mac_ie_vht_txpwr_env)];

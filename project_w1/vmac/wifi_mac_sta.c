@@ -636,6 +636,12 @@ void wifi_mac_sta_leave(struct wifi_station *sta, int reassoc)
         wifimac->scan_noisy_status = WIFINET_S_SCAN_ENV_NOISE;
         wifimac->is_connect_set_gain = 1;
         wifimac->drv_priv->drv_ops.set_channel_rssi(wifimac->drv_priv, 174);
+
+        if (wifimac->recovery_stat == WIFINET_RECOVERY_END) {
+            wnet_vif->vm_des_nssid = 0;
+            memset(wnet_vif->vm_des_ssid, 0, IV_SSID_SCAN_AMOUNT*sizeof(struct wifi_mac_ScanSSID));
+        }
+
     }
     wnet_vif->vm_phase_flags &= ~PHASE_DISCONNECTING;
 

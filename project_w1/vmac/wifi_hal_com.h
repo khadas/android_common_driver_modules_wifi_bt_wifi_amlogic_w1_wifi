@@ -974,7 +974,7 @@ struct hal_layer_ops
     unsigned long com_spinlock_flag;
     unsigned long skb_spinlock_flag;
     unsigned long pn_spinlock_flag;
-    
+
     unsigned char hst_if_init_ok; // shared for DMA & SDIO
     unsigned char hst_if_irq_en; //shared for DMA & SDIO
     unsigned char bhalOpen;
@@ -1347,7 +1347,7 @@ struct aml_hal_call_backs
     void (*intr_tx_handle)(void *drv_prv, struct txdonestatus *tx_done_status, SYS_TYPE callback, unsigned char queue_id);
     void (*intr_tx_ok_timeout)(void *drv_prv);
     void (*intr_tx_pkt_clear)(void *drv_prv);
-    void (*intr_rx_handle)(void *drv_prv,struct sk_buff *skb,unsigned char Rssi,unsigned char RxRate,
+    void (*intr_rx_handle)(void *drv_prv,struct sk_buff *skb,unsigned char Rssi,unsigned char RxRate, unsigned char bw,
         unsigned char channel,  unsigned char aggr, unsigned char wnet_vif_id,unsigned char keyid);
     int (*pmf_encrypt_pkt_handle)(void *drv_prv, struct sk_buff *skb, unsigned char rssi, unsigned char RxRate,
         unsigned char channel,  unsigned char aggr, unsigned char wnet_vif_id,unsigned char keyid);

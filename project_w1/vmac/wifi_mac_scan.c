@@ -707,6 +707,14 @@ void wifi_mac_scan_rx(struct wlan_net_vif *wnet_vif, const struct wifi_mac_scan_
         saveie(&ise->SI_rsnx_ie[0], sp->rsnxe);
     }
 
+    if (sp->country != NULL) {
+        saveie(&ise->SI_country_ie[0], sp->country);
+    }
+
+    if (sp->bss_load != NULL) {
+        saveie(&ise->SI_bss_load_ie[0], sp->bss_load);
+    }
+
     WIFINET_ADDR_COPY(se->scaninfo.SI_macaddr, macaddr);
     DPRINTF(AML_DEBUG_SCAN, "<running> %s se %p se->se_list 0x%p, %s, mac:%02x:%02x:%02x:%02x:%02x:%02x\n",
         __func__, se, &se->se_list, ssidie_sprintf(sp->ssid), macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
@@ -777,6 +785,7 @@ void wifi_mac_scan_rx(struct wlan_net_vif *wnet_vif, const struct wifi_mac_scan_
     se->LastUpdateTime = jiffies;
     se->se_valid = 1;
 
+    saveie(ise->ie_ext_cap, sp->ext_cap);
     saveie(ise->ie_vht_cap, sp->vht_cap);
     saveie(ise->ie_vht_opt, sp->vht_opt);
     saveie(ise->ie_vht_tx_pwr, sp->vht_tx_pwr);
@@ -810,7 +819,15 @@ void wifi_mac_scan_rx(struct wlan_net_vif *wnet_vif, const struct wifi_mac_scan_
     return;
 
 fail:
+     WIFI_SCAN_SE_LIST_LOCK(st);
+     if (WIFINET_ADDR_EQ(se, oldse)) {
+         list_del_init(&se->se_list);
+         list_del_init(&se->se_hash);
+         printk("[Micro]%s_%d,delete oldse\n", __func__, __LINE__);
+     }
+     WIFI_SCAN_SE_LIST_UNLOCK(st);
     FREE(se,"sta_add.se");
+    printk("[Micro]%s_%d\n", __func__, __LINE__);
     return;
 }
 
@@ -2060,6 +2077,7 @@ int wifi_mac_chk_scan(struct wlan_net_vif *wnet_vif, int flags,
     if (wifimac->wm_flags & WIFINET_F_SCAN) {
         AML_OUTPUT("wm_flags:%08x, should not happen!", wifimac->wm_flags);
         wifimac->wm_flags &= ~WIFINET_F_SCAN;
+        ss->scan_StateFlags = 0;
     }
 
     ss->scan_CfgFlags |= WIFINET_SCANCFG_CONNECT;

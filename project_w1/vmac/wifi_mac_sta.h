@@ -243,6 +243,8 @@ struct wifi_station
     int32_t sta_avg_snr;
     unsigned int sta_last_txrate;  //kbps
     unsigned int sta_last_rxrate;  //kbps
+    unsigned int sta_last_rx_vendor_rate;
+    unsigned int sta_last_rx_bw;
 
     unsigned char sta_maxrate_vht; /* b0-b3: mcs idx; b4-b7: # streams */
     unsigned int sta_vhtcap;        /* VHT capability */

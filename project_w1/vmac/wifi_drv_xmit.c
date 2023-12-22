@@ -1939,6 +1939,31 @@ int drv_aggr_check( struct drv_private *drv_priv, void * nsta, unsigned char tid
     return 0;
 }
 
+int drv_aggr_tid( struct drv_private *drv_priv, void * nsta, unsigned char tid_index)
+{
+    struct aml_driver_nsta *drv_sta = DRIVER_NODE(nsta);
+    struct drv_tx_scoreboard *tid;
+
+    if (!drv_priv->drv_config.cfg_txaggr) {
+        return 0;
+    }
+    tid = DRV_GET_TIDTXINFO(drv_sta, tid_index);
+
+    if (tid->cleanup_inprogress) {
+        return 0;
+    }
+
+    if (!tid->addba_exchangecomplete) {
+        if (tid->addba_exchangeinprogress) {
+            return 1;
+        }
+    } else {
+        return 1;
+    }
+
+    return 0;
+}
+
 int drv_aggr_allow_to_send(struct drv_private *drv_priv, void * nsta, unsigned char tid_index)
 {
     struct aml_driver_nsta *drv_sta = DRIVER_NODE(nsta);
