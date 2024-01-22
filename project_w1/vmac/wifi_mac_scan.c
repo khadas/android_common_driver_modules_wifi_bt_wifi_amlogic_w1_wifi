@@ -2075,8 +2075,11 @@ int wifi_mac_chk_scan(struct wlan_net_vif *wnet_vif, int flags,
     struct wifi_mac_scan_state *ss = wifimac->wm_scan;
 
     if (wifimac->wm_flags & WIFINET_F_SCAN) {
-        AML_OUTPUT("wm_flags:%08x, should not happen!", wifimac->wm_flags);
-        wifimac->wm_flags &= ~WIFINET_F_SCAN;
+        AML_OUTPUT("vid:%d, wm_flags:0x%08x, scan_CfgFlags:0x%08x, ss_flag:0x%08x, next_chn:%d, last_chn:%d\n",
+                   wnet_vif->wnet_vif_id, wifimac->wm_flags, ss->scan_CfgFlags, ss->scan_StateFlags,
+                   ss->scan_next_chan_index, ss->scan_last_chan_index);
+        ss->scan_StateFlags |= SCANSTATE_F_CANCEL;
+        wifi_mac_scan_timeout((SYS_TYPE)wifimac->wm_scan, (SYS_TYPE)ss->VMacPriv, 0, 0, (SYS_TYPE)wifimac->wm_scanplayercnt);
         ss->scan_StateFlags = 0;
     }
 

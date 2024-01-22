@@ -18,6 +18,7 @@ unsigned char wifi_in_insmod;
 unsigned char wifi_in_rmmod;
 unsigned char  wifi_sdio_access = 1;
 unsigned char wifi_irq_enable = 0;
+unsigned char wifi_hal_probe_done = 0;
 unsigned int  shutdown_i = 0;
 #define  I2C_CLK_QTR   0x4
 
@@ -87,12 +88,12 @@ void aml_w1_bt_hi_write_word(unsigned int addr,unsigned int data)
     unsigned int reg_tmp;
     /*
      * make sure function 5 section address-mapping feature is disabled,
-     * when this feature is disabled, 
-     * all 128k space in one sdio-function use only 
-     * one address-mapping: 32-bit AHB Address = BaseAddr + cmdRegAddr 
+     * when this feature is disabled,
+     * all 128k space in one sdio-function use only
+     * one address-mapping: 32-bit AHB Address = BaseAddr + cmdRegAddr
      */
     reg_tmp = g_w1_hif_ops.hi_read_word( RG_SDIO_IF_MISC_CTRL);
-    
+
     if (!(reg_tmp & BIT(23))) {
         reg_tmp |= BIT(23);
         g_w1_hif_ops.hi_write_word( RG_SDIO_IF_MISC_CTRL, reg_tmp);
@@ -157,8 +158,7 @@ static int _aml_w1_sdio_request_byte(unsigned char func_num,
 
     AML_W1_BT_WIFI_MUTEX_ON();
     kmalloc_buf =  (unsigned char *)kzalloc(len, GFP_DMA | GFP_ATOMIC);//virt_to_phys(fwICCM);
-    if (kmalloc_buf == NULL)
-    {
+    if (kmalloc_buf == NULL) {
         ERROR_DEBUG_OUT("kmalloc buf fail\n");
         AML_W1_BT_WIFI_MUTEX_OFF();
         return SDIOH_API_RC_FAIL;
@@ -371,8 +371,7 @@ int aml_w1_sdio_bottom_write(unsigned char func_num, int addr, void *buf, size_t
 
     AML_W1_BT_WIFI_MUTEX_ON();
     kmalloc_buf =  (unsigned char *)kzalloc(len, GFP_DMA | GFP_ATOMIC);//virt_to_phys(fwICCM);
-    if(kmalloc_buf == NULL)
-    {
+    if (kmalloc_buf == NULL) {
         ERROR_DEBUG_OUT("kmalloc buf fail\n");
         AML_W1_BT_WIFI_MUTEX_OFF();
         aml_wifi_sdio_power_unlock();
@@ -405,8 +404,7 @@ unsigned int aml_w1_sdio_read_word(unsigned int addr)
     unsigned int regdata = 0;
 
 // for bt access always on reg
-    if((addr & 0x00f00000) == 0x00f00000)
-    {
+    if ((addr & 0x00f00000) == 0x00f00000) {
         regdata = aml_w1_aon_read_reg(addr);
     }
     else if(((addr & 0x00f00000) == 0x00b00000)||
@@ -432,8 +430,7 @@ unsigned int aml_w1_sdio_read_word(unsigned int addr)
 void aml_w1_sdio_write_word(unsigned int addr, unsigned int data)
 {
     // for bt access always on reg
-    if((addr & 0x00f00000) == 0x00f00000)
-    {
+    if ((addr & 0x00f00000) == 0x00f00000) {
         aml_w1_aon_write_reg(addr, data);
     }
     else if(((addr & 0x00f00000) == 0x00b00000)||
@@ -470,7 +467,7 @@ int aml_w1_sdio_bottom_write8(unsigned char  func_num, int addr, unsigned char d
 unsigned char aml_w1_sdio_bottom_read8(unsigned char  func_num, int addr)
 {
     unsigned char sramdata;
-    
+
     _aml_w1_sdio_request_byte(func_num, SDIO_READ, addr, &sramdata);
     return sramdata;
 }
@@ -676,9 +673,9 @@ int aml_w1_sdio_scat_rw(struct scatterlist *sg_list, unsigned int sg_num, unsign
     sdio_release_host(func);
 
     if (mmc_cmd.error || mmc_dat.error) {
-	    printk("ERROR CMD53 %s cmd_error = %d data_error=%d\n",
-		write ? "write" : "read", mmc_cmd.error, mmc_dat.error);
-	    ret  = mmc_cmd.error;
+        printk("ERROR CMD53 %s cmd_error = %d data_error=%d\n",
+        write ? "write" : "read", mmc_cmd.error, mmc_dat.error);
+        ret  = mmc_cmd.error;
     }
 
     AML_W1_BT_WIFI_MUTEX_OFF();
@@ -1174,7 +1171,7 @@ void config_pmu_reg_off(void)
         printk("%s power off: after write A12=0x%x, A15=0x%x, A17=0x%x, A18=0x%x, A20=0x%x, A22=0x%x, A24=0x%x, AON30=0x%x\n",
             __func__, value_pmu_A12,value_pmu_A15,value_pmu_A17,value_pmu_A18,value_pmu_A20,value_pmu_A22,value_pmu_A24, value_aon30);
 
-	 //force wifi pmu fsm to sleep mode
+        //force wifi pmu fsm to sleep mode
         host_req_status = (0x8 << 1)| BIT(0);
         aml_w1_sdio_bottom_write8(SDIO_FUNC1, 0x221, host_req_status);
     }
@@ -1184,7 +1181,6 @@ extern int wifi_irq_num(void);
 static void aml_sdio_shutdown(struct device *device)
 {
     printk("===>>> enter %s <<<===\n", __func__);
-    wifi_sdio_access = 0;
     if (wifi_irq_enable == 1) {
 #if (USE_SDIO_IRQ==1)
         struct sdio_func *func = g_w1_hwif_sdio.sdio_func_if[SDIO_FUNC1];
@@ -1199,7 +1195,9 @@ static void aml_sdio_shutdown(struct device *device)
     }
     shutdown_i += 1;
     if (shutdown_i == 1) {
-        config_pmu_reg_off();
+        if (wifi_hal_probe_done) {
+            config_pmu_reg_off();
+        }
     } else if (shutdown_i == 7) {
         shutdown_i = 0;
         printk("===>>> end <<<===\n");
@@ -1363,6 +1361,7 @@ EXPORT_SYMBOL(host_suspend_req);
 EXPORT_SYMBOL(host_resume_req);
 EXPORT_SYMBOL(wifi_sdio_access);
 EXPORT_SYMBOL(wifi_irq_enable);
+EXPORT_SYMBOL(wifi_hal_probe_done);
 
 EXPORT_SYMBOL(aml_wifi_sdio_power_lock);
 EXPORT_SYMBOL(aml_wifi_sdio_power_unlock);
