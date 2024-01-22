@@ -4295,8 +4295,8 @@ int wifi_mac_connect_repair(struct wifi_mac *wifimac)
             if (wnet_vif->vm_state == WIFINET_S_CONNECTED) {
                 wifimac->recovery_stat |= WIFINET_RECOVERY_UNDER_CONNECT;
             }
-            hi_get_irq_status();
-            printk("get irq status done\n");
+            //hi_get_irq_status();
+            //printk("get irq status done\n");
             wifi_mac_top_sm(wnet_vif, WIFINET_S_SCAN, 0);
             wifi_mac_fw_recovery(wnet_vif);
             hi_get_irq_status();

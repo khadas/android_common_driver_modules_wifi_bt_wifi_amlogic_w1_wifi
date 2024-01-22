@@ -967,12 +967,10 @@ struct hal_layer_ops
 
     OS_LOCK tx_spinlock;
     OS_LOCK com_spinlock;
-    OS_LOCK skb_spinlock;
     OS_LOCK pn_spinlock;
 
     unsigned long tx_spinlock_flag;
     unsigned long com_spinlock_flag;
-    unsigned long skb_spinlock_flag;
     unsigned long pn_spinlock_flag;
 
     unsigned char hst_if_init_ok; // shared for DMA & SDIO

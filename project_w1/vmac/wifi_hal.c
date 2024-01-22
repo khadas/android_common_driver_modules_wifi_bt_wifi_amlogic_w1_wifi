@@ -2289,7 +2289,6 @@ int hal_init_priv(void)
     HAL_LOCK_INIT();
     POWER_LOCK_INIT();
     COMMON_LOCK_INIT();
-    WIFI_NETIF_RECV_SKB_INIT();
     AML_TXLOCK_INIT();
     PN_LOCK_INIT();
 
@@ -2434,7 +2433,6 @@ void hal_exit_priv(void)
     POWER_LOCK_DESTROY();
     AML_TXLOCK_DESTROY();
     COMMON_LOCK_DESTROY();
-    WIFI_NETIF_RECV_SKB_DESTROY();
     PN_LOCK_DESTROY();
 
 #if defined (HAL_FPGA_VER)

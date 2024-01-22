@@ -974,9 +974,9 @@ wifi_mac_deliver_data(struct wifi_station *sta, struct sk_buff *skb)
         else
         {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
-            WIFI_NETIF_RECV_SKB_LOCK();
+            local_bh_disable();
             netif_receive_skb(skb);
-            WIFI_NETIF_RECV_SKB_UNLOCK();
+            local_bh_enable();
 #else
             netif_rx(skb);
 #endif
